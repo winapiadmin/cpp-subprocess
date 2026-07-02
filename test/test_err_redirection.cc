@@ -6,7 +6,8 @@ using namespace subprocess;
 void test_redirect()
 {
   auto p = Popen("./write_err.sh", output{"write_err.txt"}, error{STDOUT});
-  std::cout << p.poll() << std::endl;
+  auto poll_res = p.poll();
+  std::cout << (poll_res.has_value() ? std::to_string(*poll_res) : "running") << std::endl;
 
 }
 

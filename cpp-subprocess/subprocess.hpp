@@ -36,6 +36,7 @@ Documentation for C++ subprocessing library.
 
 #include <algorithm>
 #include <cassert>
+#include <chrono>
 #include <csignal>
 #include <cstdio>
 #include <cstdlib>
@@ -47,8 +48,10 @@ Documentation for C++ subprocessing library.
 #include <locale>
 #include <map>
 #include <memory>
+#include <optional>
 #include <sstream>
 #include <string>
+#include <thread>
 #include <vector>
 
 #if (defined _MSC_VER) || (defined __MINGW32__)
@@ -86,6 +89,7 @@ extern "C" {
   
   #define STATUS_WAIT_0 ((unsigned long)0x00000000L)
   #define WAIT_OBJECT_0 ((STATUS_WAIT_0) + 0)
+  #define WAIT_TIMEOUT  ((unsigned long)0x00000102L)
   
   #define HANDLE_FLAG_INHERIT 0x00000001
   
@@ -93,6 +97,14 @@ extern "C" {
   
   #define CREATE_NO_WINDOW           0x08000000
   #define CREATE_UNICODE_ENVIRONMENT 0x00000400
+
+  #define GENERIC_READ   0x80000000
+  #define GENERIC_WRITE  0x40000000
+  #define FILE_SHARE_READ   0x00000001
+  #define FILE_SHARE_WRITE  0x00000002
+  #define OPEN_EXISTING     0x00000003
+  #define FILE_ATTRIBUTE_NORMAL 0x00000080
+  #define INVALID_HANDLE_VALUE ((HANDLE)(-1))
   
   #define FORMAT_MESSAGE_ALLOCATE_BUFFER 0x00000100
   #define FORMAT_MESSAGE_FROM_SYSTEM     0x00001000
@@ -174,6 +186,7 @@ extern "C" {
   } SP_STARTUPINFOW, * SP_LPSTARTUPINFOW;
   
    __declspec(dllimport) BOOL   WINAPI CloseHandle(HANDLE);
+   __declspec(dllimport) HANDLE WINAPI CreateFileW(LPCWSTR, DWORD, DWORD, LPSECURITY_ATTRIBUTES, DWORD, DWORD, HANDLE);
    __declspec(dllimport) BOOL   WINAPI CreatePipe(PHANDLE, PHANDLE, LPSECURITY_ATTRIBUTES, DWORD);
    __declspec(dllimport) BOOL   WINAPI CreateProcessW(LPCWSTR, LPWSTR, LPSECURITY_ATTRIBUTES, LPSECURITY_ATTRIBUTES, BOOL, DWORD, LPVOID, LPCWSTR, LPSTARTUPINFOW, LPPROCESS_INFORMATION);
    __declspec(dllimport) BOOL   WINAPI FreeEnvironmentStringsW(LPWCH);
@@ -277,6 +290,21 @@ public:
   int retcode;
   CalledProcessError(const std::string& error_msg, int retcode):
     std::runtime_error(error_msg), retcode(retcode)
+  {}
+};
+
+
+/*!
+ * class: TimeoutExpired
+ * Thrown when a timeout is exceeded during wait() or communicate().
+ * The message contains the operation that timed out and the timeout value.
+ */
+class TimeoutExpired: public std::runtime_error
+{
+public:
+  int timeout_ms;
+  TimeoutExpired(const std::string& error_msg, int timeout_ms_val):
+    std::runtime_error(error_msg), timeout_ms(timeout_ms_val)
   {}
 };
 
@@ -856,6 +884,21 @@ struct shell {
   bool shell_ = false;
 };
 
+struct check_arg {
+  bool val;
+  explicit check_arg(bool v): val(v) {}
+};
+
+struct capture_output_arg {
+  bool val;
+  explicit capture_output_arg(bool v): val(v) {}
+};
+
+struct timeout_arg {
+  int ms;
+  explicit timeout_arg(int t): ms(t) {}
+};
+
 /*!
  * Base class for all arguments involving string value.
  */
@@ -917,6 +960,7 @@ enum IOTYPE {
   STDOUT = 1,
   STDERR,
   PIPE,
+  DEVNULL,
 };
 
 //TODO: A common base/interface for below stream structures ??
@@ -946,12 +990,18 @@ struct input
     rd_ch_ = fd;
   }
   explicit input(IOTYPE typ) {
-    if (typ != PIPE) throw std::invalid_argument("input: STDOUT/STDERR not allowed");
+    if (typ == PIPE) {
 #ifndef __USING_WINDOWS__
-    std::tie(rd_ch_, wr_ch_) = util::pipe_cloexec();
+      std::tie(rd_ch_, wr_ch_) = util::pipe_cloexec();
 #endif
+    } else if (typ == DEVNULL) {
+      devnull_ = true;
+    } else {
+      throw std::invalid_argument("input: STDOUT/STDERR not allowed");
+    }
   }
 
+  bool devnull_ = false;
   int rd_ch_ = -1;
   int wr_ch_ = -1;
 };
@@ -979,12 +1029,18 @@ struct output
     wr_ch_ = fd;
   }
   explicit output(IOTYPE typ) {
-    if (typ != PIPE) throw std::invalid_argument("output: STDOUT/STDERR not allowed");
+    if (typ == PIPE) {
 #ifndef __USING_WINDOWS__
-    std::tie(rd_ch_, wr_ch_) = util::pipe_cloexec();
+      std::tie(rd_ch_, wr_ch_) = util::pipe_cloexec();
 #endif
+    } else if (typ == DEVNULL) {
+      devnull_ = true;
+    } else {
+      throw std::invalid_argument("output: STDOUT/STDERR not allowed");
+    }
   }
 
+  bool devnull_ = false;
   int rd_ch_ = -1;
   int wr_ch_ = -1;
 };
@@ -1010,18 +1066,21 @@ struct error
     wr_ch_ = fd;
   }
   explicit error(IOTYPE typ) {
-    if (typ != PIPE && typ != STDOUT) throw std::invalid_argument("error: STDERR not allowed");
     if (typ == PIPE) {
 #ifndef __USING_WINDOWS__
       std::tie(rd_ch_, wr_ch_) = util::pipe_cloexec();
 #endif
-    } else {
-      // Need to defer it till we have checked all arguments
+    } else if (typ == STDOUT) {
       deferred_ = true;
+    } else if (typ == DEVNULL) {
+      devnull_ = true;
+    } else {
+      throw std::invalid_argument("error: STDERR not allowed");
     }
   }
 
   bool deferred_ = false;
+  bool devnull_ = false;
   int rd_ch_ = -1;
   int wr_ch_ = -1;
 };
@@ -1158,6 +1217,9 @@ struct ArgumentDeducer
   void set_option(close_fds&& cfds);
   void set_option(preexec_func&& prefunc);
   void set_option(session_leader&& sleader);
+  void set_option(check_arg&& c);
+  void set_option(capture_output_arg&& co);
+  void set_option(timeout_arg&& t);
 
 private:
   Popen* popen_ = nullptr;
@@ -1217,16 +1279,16 @@ public:
   int send(const char* msg, size_t length);
   int send(const std::vector<char>& msg);
 
-  std::pair<OutBuffer, ErrBuffer> communicate(const char* msg, size_t length);
-  std::pair<OutBuffer, ErrBuffer> communicate(const std::vector<char>& msg)
-  { return communicate(msg.data(), msg.size()); }
+  std::pair<OutBuffer, ErrBuffer> communicate(const char* msg, size_t length, int timeout_ms = -1);
+  std::pair<OutBuffer, ErrBuffer> communicate(const std::vector<char>& msg, int timeout_ms = -1)
+  { return communicate(msg.data(), msg.size(), timeout_ms); }
 
   void set_out_buf_cap(size_t cap) { out_buf_cap_ = cap; }
   void set_err_buf_cap(size_t cap) { err_buf_cap_ = cap; }
 
 private:
   std::pair<OutBuffer, ErrBuffer> communicate_threaded(
-      const char* msg, size_t length);
+      const char* msg, size_t length, int timeout_ms = -1);
 
 private:
   Streams* stream_;
@@ -1253,6 +1315,8 @@ public:
   Streams& operator=(const Streams&) = delete;
   Streams(Streams&&) = default;
   Streams& operator=(Streams&&) = default;
+
+  Popen* parent_ = nullptr;
 
 public:
   void setup_comm_channels();
@@ -1302,11 +1366,11 @@ public: /* Communication forwarding API's */
   int send(const std::vector<char>& msg)
   { return comm_.send(msg); }
 
-  std::pair<OutBuffer, ErrBuffer> communicate(const char* msg, size_t length)
-  { return comm_.communicate(msg, length); }
+  std::pair<OutBuffer, ErrBuffer> communicate(const char* msg, size_t length, int timeout_ms = -1)
+  { return comm_.communicate(msg, length, timeout_ms); }
 
-  std::pair<OutBuffer, ErrBuffer> communicate(const std::vector<char>& msg)
-  { return comm_.communicate(msg); }
+  std::pair<OutBuffer, ErrBuffer> communicate(const std::vector<char>& msg, int timeout_ms = -1)
+  { return comm_.communicate(msg, timeout_ms); }
 
 
 public:// Yes they are public
@@ -1340,6 +1404,10 @@ public:// Yes they are public
   // Emulates stderr
   int err_write_ = -1; // Write error to parent (Child owned)
   int err_read_  = -1; // Read error from child (Parent owned)
+
+  bool input_devnull_ = false;
+  bool output_devnull_ = false;
+  bool error_devnull_ = false;
 
 private:
   Communication comm_;
@@ -1406,15 +1474,19 @@ public:
     , child_pid_(other.child_pid_)
     , retcode_(other.retcode_)
   {
+    stream_.parent_ = this;
 #if defined(__USING_WINDOWS__)
     other.process_handle_ = nullptr;
 #endif
+    other.child_created_ = false;
+    other.child_pid_ = -1;
   }
 
   Popen& operator=(Popen&& other) noexcept
   {
     if (this != &other) {
       stream_ = std::move(other.stream_);
+      stream_.parent_ = this;
       cleanup_future_ = std::move(other.cleanup_future_);
 #if defined(__USING_WINDOWS__)
       if (process_handle_) CloseHandle(process_handle_);
@@ -1435,6 +1507,8 @@ public:
       child_created_ = other.child_created_;
       child_pid_ = other.child_pid_;
       retcode_ = other.retcode_;
+      other.child_created_ = false;
+      other.child_pid_ = -1;
     }
     return *this;
   }
@@ -1442,6 +1516,7 @@ public:
   template <typename... Args>
   Popen(const std::string& cmd_args, Args&& ...args)
   {
+    stream_.parent_ = this;
     vargs_ = util::split(cmd_args);
     init_args(std::forward<Args>(args)...);
 
@@ -1454,6 +1529,7 @@ public:
   template <typename... Args>
   Popen(std::initializer_list<const char*> cmd_args, Args&& ...args)
   {
+    stream_.parent_ = this;
     vargs_.insert(vargs_.end(), cmd_args.begin(), cmd_args.end());
     init_args(std::forward<Args>(args)...);
 
@@ -1466,6 +1542,7 @@ public:
   template <typename... Args>
   Popen(std::vector<std::string> vargs_, Args &&... args) : vargs_(vargs_)
   {
+    stream_.parent_ = this;
     init_args(std::forward<Args>(args)...);
 
     // Setup the communication channels of the Popen class
@@ -1483,6 +1560,12 @@ public:
     if (process_handle_) {
       CloseHandle(process_handle_);
     }
+#else
+    // Reap zombie to prevent resource leak
+    if (child_created_ && retcode_ == -1) {
+      int status;
+      waitpid(child_pid_, &status, WNOHANG);
+    }
 #endif
   }
 
@@ -1492,13 +1575,16 @@ public:
 
   int retcode() const noexcept { return retcode_; }
 
-  int wait() noexcept(false);
+  int timeout_ms() const noexcept { return timeout_ms_; }
+  bool check() const noexcept { return check_; }
 
-  int poll() noexcept(false);
+  int wait(int timeout_ms = -1) noexcept(false);
 
-  // Does not fail, Caller is expected to recheck the
-  // status with a call to poll()
-  void kill(int sig_num = 9);
+  std::optional<int> poll() noexcept(false);
+
+  void send_signal(int sig);
+  void terminate();
+  void kill();
 
   void set_out_buf_cap(size_t cap) { stream_.set_out_buf_cap(cap); }
 
@@ -1513,10 +1599,26 @@ public:
   int send(const std::vector<char>& msg)
   { return stream_.send(msg); }
 
-  std::pair<OutBuffer, ErrBuffer> communicate(const char* msg, size_t length)
+  std::pair<OutBuffer, ErrBuffer> communicate(const char* msg, size_t length, int timeout_ms = -1)
   {
-    auto res = stream_.communicate(msg, length);
-    retcode_ = wait();
+    if (timeout_ms < 0) {
+      auto res = stream_.communicate(msg, length, timeout_ms);
+      retcode_ = wait();
+      return res;
+    }
+    auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(timeout_ms);
+    auto res = stream_.communicate(msg, length, timeout_ms);
+    auto remaining = std::chrono::duration_cast<std::chrono::milliseconds>(
+        deadline - std::chrono::steady_clock::now()).count();
+    if (remaining < 0) remaining = 0;
+    try {
+      retcode_ = wait(static_cast<int>(remaining));
+    } catch (TimeoutExpired&) {
+      kill();
+      if (cleanup_future_.valid()) cleanup_future_.wait();
+      else wait();
+      throw;
+    }
     return res;
   }
 
@@ -1527,14 +1629,12 @@ public:
 
   std::pair<OutBuffer, ErrBuffer> communicate(const std::vector<char>& msg)
   {
-    auto res = stream_.communicate(msg);
-    retcode_ = wait();
-    return res;
+    return communicate(msg.data(), msg.size());
   }
 
-  std::pair<OutBuffer, ErrBuffer> communicate()
+  std::pair<OutBuffer, ErrBuffer> communicate(int timeout_ms = -1)
   {
-    return communicate(nullptr, 0);
+    return communicate(nullptr, 0, timeout_ms);
   }
 
   FILE* input()  { return stream_.input(); }
@@ -1580,6 +1680,11 @@ private:
   int child_pid_ = -1;
 
   int retcode_ = -1;
+
+  // Flags for run() convenience function
+  bool check_ = false;
+  bool capture_output_ = false;
+  int timeout_ms_ = -1;
 };
 
 inline void Popen::init_args() {
@@ -1607,12 +1712,17 @@ inline void Popen::start_process() noexcept(false)
   execute_process();
 }
 
-inline int Popen::wait() noexcept(false)
+inline int Popen::wait(int timeout_ms) noexcept(false)
 {
 #ifdef __USING_WINDOWS__
   if (!process_handle_) return retcode_;
 
-  int ret = WaitForSingleObject(process_handle_, INFINITE);
+  DWORD win_timeout = (timeout_ms < 0) ? INFINITE : static_cast<DWORD>(timeout_ms);
+  int ret = WaitForSingleObject(process_handle_, win_timeout);
+
+  if (ret == WAIT_TIMEOUT) {
+    throw TimeoutExpired("wait() timed out", timeout_ms);
+  }
 
   if (ret != WAIT_OBJECT_0) {
     throw OSError("Unexpected return code from WaitForSingleObject", 0);
@@ -1629,27 +1739,61 @@ inline int Popen::wait() noexcept(false)
   retcode_ = (int)dretcode_;
   return retcode_;
 #else
-  int ret, status;
-  std::tie(ret, status) = util::wait_for_child_exit(pid());
-  if (ret == -1) {
-    if (errno != ECHILD) throw OSError("waitpid failed", errno);
+  if (timeout_ms < 0) {
+    int ret, status;
+    std::tie(ret, status) = util::wait_for_child_exit(pid());
+    if (ret == -1) {
+      if (errno != ECHILD) throw OSError("waitpid failed", errno);
+      return 0;
+    }
+    if (WIFEXITED(status)) return WEXITSTATUS(status);
+    if (WIFSIGNALED(status)) return -WTERMSIG(status);
+    else return 255;
     return 0;
   }
-  if (WIFEXITED(status)) return WEXITSTATUS(status);
-  if (WIFSIGNALED(status)) return WTERMSIG(status);
-  else return 255;
 
-  return 0;
+  // Timed wait: poll with WNOHANG
+  auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(timeout_ms);
+
+  while (true) {
+    int status;
+    int ret = waitpid(child_pid_, &status, WNOHANG);
+
+    if (ret == child_pid_) {
+      if (WIFEXITED(status)) {
+        retcode_ = WEXITSTATUS(status);
+      } else if (WIFSIGNALED(status)) {
+        retcode_ = -WTERMSIG(status);
+      } else {
+        retcode_ = 255;
+      }
+      return retcode_;
+    }
+
+    if (ret == -1) {
+      if (errno == ECHILD) {
+        retcode_ = 0;
+        return 0;
+      }
+      throw OSError("waitpid failed", errno);
+    }
+
+    if (std::chrono::steady_clock::now() >= deadline) {
+      throw TimeoutExpired("wait() timed out", timeout_ms);
+    }
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+  }
 #endif
 }
 
-inline int Popen::poll() noexcept(false)
+inline std::optional<int> Popen::poll() noexcept(false)
 {
 #ifdef __USING_WINDOWS__
   if (!process_handle_) return retcode_;
 
   int ret = WaitForSingleObject(process_handle_, 0);
-  if (ret != WAIT_OBJECT_0) return -1;
+  if (ret != WAIT_OBJECT_0) return std::nullopt;
 
   DWORD dretcode_;
   if (FALSE == GetExitCodeProcess(process_handle_, &dretcode_))
@@ -1659,17 +1803,17 @@ inline int Popen::poll() noexcept(false)
 
   return retcode_;
 #else
-  if (!child_created_) return -1; // TODO: ??
+  if (!child_created_) return std::nullopt;
 
   int status;
 
   // Returns zero if child is still running
   int ret = waitpid(child_pid_, &status, WNOHANG);
-  if (ret == 0) return -1;
+  if (ret == 0) return std::nullopt;
 
   if (ret == child_pid_) {
     if (WIFSIGNALED(status)) {
-      retcode_ = WTERMSIG(status);
+      retcode_ = -WTERMSIG(status);
     } else if (WIFEXITED(status)) {
       retcode_ = WEXITSTATUS(status);
     } else {
@@ -1694,15 +1838,37 @@ inline int Popen::poll() noexcept(false)
 #endif
 }
 
-inline void Popen::kill(int sig_num)
+inline void Popen::send_signal(int sig)
 {
 #ifdef __USING_WINDOWS__
-  if (!TerminateProcess(this->process_handle_, (UINT)sig_num)) {
+  if (!TerminateProcess(this->process_handle_, (UINT)sig)) {
     throw OSError("TerminateProcess", 0);
   }
 #else
-  if (session_leader_) killpg(child_pid_, sig_num);
-  else ::kill(child_pid_, sig_num);
+  if (session_leader_) killpg(child_pid_, sig);
+  else ::kill(child_pid_, sig);
+#endif
+}
+
+inline void Popen::terminate()
+{
+#ifdef __USING_WINDOWS__
+  if (!TerminateProcess(this->process_handle_, 1)) {
+    throw OSError("TerminateProcess", 0);
+  }
+#else
+  send_signal(SIGTERM);
+#endif
+}
+
+inline void Popen::kill()
+{
+#ifdef __USING_WINDOWS__
+  if (!TerminateProcess(this->process_handle_, 1)) {
+    throw OSError("TerminateProcess", 0);
+  }
+#else
+  send_signal(SIGKILL);
 #endif
 }
 
@@ -1760,6 +1926,39 @@ inline void Popen::execute_process() noexcept(false)
   siStartInfo.hStdOutput = this->stream_.g_hChildStd_OUT_Wr;
   siStartInfo.hStdInput = this->stream_.g_hChildStd_IN_Rd;
 
+  // Handle DEVNULL: replace pipe handles with NUL handles
+  HANDLE hNulIn = INVALID_HANDLE_VALUE;
+  HANDLE hNulOut = INVALID_HANDLE_VALUE;
+  if (this->stream_.input_devnull_) {
+    hNulIn = CreateFileW(L"NUL", GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE,
+                         NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+    if (hNulIn == INVALID_HANDLE_VALUE) {
+      throw OSError("CreateFileW(NUL) for stdin", 0);
+    }
+    siStartInfo.hStdInput = hNulIn;
+  }
+  if (this->stream_.output_devnull_) {
+    hNulOut = CreateFileW(L"NUL", GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE,
+                          NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+    if (hNulOut == INVALID_HANDLE_VALUE) {
+      throw OSError("CreateFileW(NUL) for stdout", 0);
+    }
+    siStartInfo.hStdOutput = hNulOut;
+  }
+  if (this->stream_.error_devnull_) {
+    // Use hNulOut if already opened for output, otherwise open a new one
+    if (hNulOut != INVALID_HANDLE_VALUE) {
+      siStartInfo.hStdError = hNulOut;
+    } else {
+      hNulOut = CreateFileW(L"NUL", GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE,
+                            NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+      if (hNulOut == INVALID_HANDLE_VALUE) {
+        throw OSError("CreateFileW(NUL) for stderr", 0);
+      }
+      siStartInfo.hStdError = hNulOut;
+    }
+  }
+
   siStartInfo.dwFlags |= STARTF_USESTDHANDLES;
 
   const wchar_t *cwd_arg = this->cwd_.empty() ? NULL : cwd_.c_str();
@@ -1789,6 +1988,10 @@ inline void Popen::execute_process() noexcept(false)
   */
 
   this->process_handle_ = piProcInfo.hProcess;
+
+  // Close DEVNULL handles (child has inherited them)
+  if (hNulIn != INVALID_HANDLE_VALUE) CloseHandle(hNulIn);
+  if (hNulOut != INVALID_HANDLE_VALUE) CloseHandle(hNulOut);
 
   {
     HANDLE hProcess = this->process_handle_;
@@ -1911,17 +2114,32 @@ namespace detail {
     popen_->session_leader_ = sleader.leader_;
   }
 
+  inline void ArgumentDeducer::set_option(check_arg&& c) {
+    popen_->check_ = c.val;
+  }
+
+  inline void ArgumentDeducer::set_option(capture_output_arg&& co) {
+    popen_->capture_output_ = co.val;
+  }
+
+  inline void ArgumentDeducer::set_option(timeout_arg&& t) {
+    popen_->timeout_ms_ = t.ms;
+  }
+
   inline void ArgumentDeducer::set_option(input&& inp) {
+    if (inp.devnull_) popen_->stream_.input_devnull_ = true;
     if (inp.rd_ch_ != -1) popen_->stream_.read_from_parent_ = inp.rd_ch_;
     if (inp.wr_ch_ != -1) popen_->stream_.write_to_child_ = inp.wr_ch_;
   }
 
   inline void ArgumentDeducer::set_option(output&& out) {
+    if (out.devnull_) popen_->stream_.output_devnull_ = true;
     if (out.wr_ch_ != -1) popen_->stream_.write_to_parent_ = out.wr_ch_;
     if (out.rd_ch_ != -1) popen_->stream_.read_from_child_ = out.rd_ch_;
   }
 
   inline void ArgumentDeducer::set_option(error&& err) {
+    if (err.devnull_) popen_->stream_.error_devnull_ = true;
     if (err.deferred_) {
       if (popen_->stream_.write_to_parent_ != -1) {
         popen_->stream_.err_write_ = popen_->stream_.write_to_parent_;
@@ -2015,6 +2233,23 @@ namespace detail {
     if (stream.err_write_ == 0 || stream.err_write_ == 1)
       stream.err_write_ = dup(stream.err_write_);
 
+    // Handle DEVNULL: open /dev/null before dup2
+    if (stream.input_devnull_) {
+      int fd = open("/dev/null", O_RDONLY);
+      if (fd == -1) exit_with_error("open /dev/null failed", errno);
+      stream.read_from_parent_ = fd;
+    }
+    if (stream.output_devnull_) {
+      int fd = open("/dev/null", O_WRONLY);
+      if (fd == -1) exit_with_error("open /dev/null failed", errno);
+      stream.write_to_parent_ = fd;
+    }
+    if (stream.error_devnull_) {
+      int fd = open("/dev/null", O_WRONLY);
+      if (fd == -1) exit_with_error("open /dev/null failed", errno);
+      stream.err_write_ = fd;
+    }
+
     auto _dup2_ = [&](int fd, int to_fd) {
       if (fd == to_fd) {
         util::set_clo_on_exec(fd, false);
@@ -2071,17 +2306,29 @@ namespace detail {
   inline void Streams::setup_comm_channels()
   {
 #ifdef __USING_WINDOWS__
-    util::configure_pipe(&this->g_hChildStd_IN_Rd, &this->g_hChildStd_IN_Wr, &this->g_hChildStd_IN_Wr);
-    this->input(util::file_from_handle(this->g_hChildStd_IN_Wr, "w"));
-    this->write_to_child_ = subprocess_fileno(this->input());
+    if (input_devnull_) {
+      this->write_to_child_ = -1;
+    } else {
+      util::configure_pipe(&this->g_hChildStd_IN_Rd, &this->g_hChildStd_IN_Wr, &this->g_hChildStd_IN_Wr);
+      this->input(util::file_from_handle(this->g_hChildStd_IN_Wr, "w"));
+      this->write_to_child_ = subprocess_fileno(this->input());
+    }
 
-    util::configure_pipe(&this->g_hChildStd_OUT_Rd, &this->g_hChildStd_OUT_Wr, &this->g_hChildStd_OUT_Rd);
-    this->output(util::file_from_handle(this->g_hChildStd_OUT_Rd, "r"));
-    this->read_from_child_ = subprocess_fileno(this->output());
+    if (output_devnull_) {
+      this->read_from_child_ = -1;
+    } else {
+      util::configure_pipe(&this->g_hChildStd_OUT_Rd, &this->g_hChildStd_OUT_Wr, &this->g_hChildStd_OUT_Rd);
+      this->output(util::file_from_handle(this->g_hChildStd_OUT_Rd, "r"));
+      this->read_from_child_ = subprocess_fileno(this->output());
+    }
 
-    util::configure_pipe(&this->g_hChildStd_ERR_Rd, &this->g_hChildStd_ERR_Wr, &this->g_hChildStd_ERR_Rd);
-    this->error(util::file_from_handle(this->g_hChildStd_ERR_Rd, "r"));
-    this->err_read_ = subprocess_fileno(this->error());
+    if (error_devnull_) {
+      this->err_read_ = -1;
+    } else {
+      util::configure_pipe(&this->g_hChildStd_ERR_Rd, &this->g_hChildStd_ERR_Wr, &this->g_hChildStd_ERR_Rd);
+      this->error(util::file_from_handle(this->g_hChildStd_ERR_Rd, "r"));
+      this->err_read_ = subprocess_fileno(this->error());
+    }
 #else
 
     if (write_to_child_ != -1)  input(fdopen(write_to_child_, "wb"));
@@ -2118,8 +2365,14 @@ namespace detail {
   }
 
   inline std::pair<OutBuffer, ErrBuffer>
-  Communication::communicate(const char* msg, size_t length)
+  Communication::communicate(const char* msg, size_t length, int timeout_ms)
   {
+    // With a timeout, always use the threaded approach so we can
+    // limit the total time spent blocking on reads.
+    if (timeout_ms >= 0) {
+      return communicate_threaded(msg, length, timeout_ms);
+    }
+
     // Optimization from subprocess.py
     // If we are using one pipe, or no pipe
     // at all, using select() or threads is unnecessary.
@@ -2184,7 +2437,7 @@ namespace detail {
 
 
   inline std::pair<OutBuffer, ErrBuffer>
-  Communication::communicate_threaded(const char* msg, size_t length)
+  Communication::communicate_threaded(const char* msg, size_t length, int timeout_ms)
   {
     OutBuffer obuf;
     ErrBuffer ebuf;
@@ -2219,15 +2472,62 @@ namespace detail {
       stream_->input_.reset();
     }
 
-    if (out_fut.valid()) {
-      int res = out_fut.get();
-      if (res != -1) obuf.length = res;
-      else obuf.length = 0;
-    }
-    if (err_fut.valid()) {
-      int res = err_fut.get();
-      if (res != -1) ebuf.length = res;
-      else ebuf.length = 0;
+    if (timeout_ms < 0) {
+      // No timeout: wait indefinitely for reads
+      if (out_fut.valid()) {
+        int res = out_fut.get();
+        if (res != -1) obuf.length = res;
+        else obuf.length = 0;
+      }
+      if (err_fut.valid()) {
+        int res = err_fut.get();
+        if (res != -1) ebuf.length = res;
+        else ebuf.length = 0;
+      }
+    } else {
+      // Timed wait: limit how long we block on reads
+      auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(timeout_ms);
+      bool timed_out = false;
+
+      if (out_fut.valid()) {
+        auto remaining = std::chrono::duration_cast<std::chrono::milliseconds>(
+            deadline - std::chrono::steady_clock::now());
+        if (remaining.count() <= 0) {
+          timed_out = true;
+        } else {
+          auto status = out_fut.wait_for(remaining);
+          if (status == std::future_status::timeout) {
+            timed_out = true;
+          } else {
+            int res = out_fut.get();
+            obuf.length = (res != -1) ? res : 0;
+          }
+        }
+      }
+      if (err_fut.valid()) {
+        auto remaining = std::chrono::duration_cast<std::chrono::milliseconds>(
+            deadline - std::chrono::steady_clock::now());
+        if (remaining.count() <= 0) {
+          timed_out = true;
+        } else {
+          auto status = err_fut.wait_for(remaining);
+          if (status == std::future_status::timeout) {
+            timed_out = true;
+          } else {
+            int res = err_fut.get();
+            ebuf.length = (res != -1) ? res : 0;
+          }
+        }
+      }
+
+      if (timed_out) {
+        // Kill the child so the reader threads unblock (pipes get closed)
+        if (stream_->parent_) stream_->parent_->kill();
+        // Wait for both readers to complete so partial data is captured
+        if (out_fut.valid()) out_fut.wait();
+        if (err_fut.valid()) err_fut.wait();
+        throw TimeoutExpired("communicate() timed out", timeout_ms);
+      }
     }
 
     return std::make_pair(std::move(obuf), std::move(ebuf));
@@ -2235,6 +2535,24 @@ namespace detail {
 
 } // end namespace detail
 
+/*!
+ * The result of run(). Stores the exit code and any captured
+ * stdout / stderr output.
+ */
+struct CompletedProcess
+{
+  int retcode;
+  OutBuffer out;
+  ErrBuffer err;
+
+  CompletedProcess(int rc, OutBuffer&& o, ErrBuffer&& e)
+    : retcode(rc), out(std::move(o)), err(std::move(e))
+  {}
+
+  void check_returncode() {
+    if (retcode) throw CalledProcessError("Command failed : Non zero retcode", retcode);
+  }
+};
 
 
 // Convenience Functions
@@ -2249,7 +2567,7 @@ namespace detail
     auto p = Popen(std::forward<F>(farg), std::forward<Args>(args)..., output{PIPE});
     auto res = p.communicate();
     auto retcode = p.retcode();
-    if (retcode > 0) {
+    if (retcode != 0) {
       throw CalledProcessError("Command failed : Non zero retcode", retcode);
     }
     return std::move(res.first);
@@ -2259,6 +2577,32 @@ namespace detail
   int call_impl(F& farg, Args&&... args)
   {
     return Popen(std::forward<F>(farg), std::forward<Args>(args)...).wait();
+  }
+
+  // ---- run() implementation ----
+
+  template<typename F, typename... Args>
+  CompletedProcess run_impl(F&& farg, std::false_type /* has_capture */, Args&&... args)
+  {
+    Popen p(std::forward<F>(farg), std::forward<Args>(args)...);
+    auto res = p.communicate(p.timeout_ms());
+    if (p.check()) {
+      int rc = p.retcode();
+      if (rc) throw CalledProcessError("Command failed : Non zero retcode", rc);
+    }
+    return CompletedProcess(p.retcode(), std::move(res.first), std::move(res.second));
+  }
+
+  template<typename F, typename... Args>
+  CompletedProcess run_impl(F&& farg, std::true_type /* has_capture */, Args&&... args)
+  {
+    Popen p(std::forward<F>(farg), std::forward<Args>(args)..., output{PIPE}, error{PIPE});
+    auto res = p.communicate(p.timeout_ms());
+    if (p.check()) {
+      int rc = p.retcode();
+      if (rc) throw CalledProcessError("Command failed : Non zero retcode", rc);
+    }
+    return CompletedProcess(p.retcode(), std::move(res.first), std::move(res.second));
   }
 
   static inline void pipeline_impl(std::vector<Popen>& cmds)
@@ -2333,6 +2677,58 @@ template <typename... Args>
 OutBuffer check_output(std::vector<std::string> plist, Args &&... args)
 {
   return (detail::check_output_impl(plist, std::forward<Args>(args)...));
+}
+
+
+/*!
+ * Run a command and return a CompletedProcess.
+ * Supports check{}, capture_output{}, and timeout_ms{} arguments
+ * in addition to standard Popen arguments.
+ *
+ * Eg: run({"ls", "-l"}, output{PIPE});
+ *     run({"sleep", "30"}, check{true}, timeout_ms{5000});
+ *     run({"cmd"}, capture_output{true}, check{true});
+ */
+template<typename... Args>
+CompletedProcess run(std::initializer_list<const char*> plist, Args&&... args)
+{
+  typedef detail::param_pack<Args...> pack;
+  constexpr bool has_capture = detail::has_type<capture_output_arg, pack>::value;
+  static_assert(!has_capture || !detail::has_type<output, pack>::value,
+    "output argument not allowed with capture_output");
+  static_assert(!has_capture || !detail::has_type<error, pack>::value,
+    "error argument not allowed with capture_output");
+  return detail::run_impl(plist,
+    std::integral_constant<bool, has_capture>{},
+    std::forward<Args>(args)...);
+}
+
+template<typename... Args>
+CompletedProcess run(const std::string& arg, Args&&... args)
+{
+  typedef detail::param_pack<Args...> pack;
+  constexpr bool has_capture = detail::has_type<capture_output_arg, pack>::value;
+  static_assert(!has_capture || !detail::has_type<output, pack>::value,
+    "output argument not allowed with capture_output");
+  static_assert(!has_capture || !detail::has_type<error, pack>::value,
+    "error argument not allowed with capture_output");
+  return detail::run_impl(arg,
+    std::integral_constant<bool, has_capture>{},
+    std::forward<Args>(args)...);
+}
+
+template <typename... Args>
+CompletedProcess run(std::vector<std::string> plist, Args &&... args)
+{
+  typedef detail::param_pack<Args...> pack;
+  constexpr bool has_capture = detail::has_type<capture_output_arg, pack>::value;
+  static_assert(!has_capture || !detail::has_type<output, pack>::value,
+    "output argument not allowed with capture_output");
+  static_assert(!has_capture || !detail::has_type<error, pack>::value,
+    "error argument not allowed with capture_output");
+  return detail::run_impl(plist,
+    std::integral_constant<bool, has_capture>{},
+    std::forward<Args>(args)...);
 }
 
 

@@ -51,7 +51,7 @@ void test_sleep()
 {
   auto p = Popen({"sleep", "30"}, shell{true});
 
-  while (p.poll() == -1)
+  while (!p.poll().has_value())
   {
     std::cout << "Waiting..." << std::endl;
 #ifdef __USING_WINDOWS__

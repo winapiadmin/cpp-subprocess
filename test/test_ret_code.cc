@@ -15,7 +15,7 @@ void test_ret_code()
 #else
   auto p = sp::Popen({"/usr/bin/false"});
 #endif
-  while (p.poll() == -1) {
+  while (!p.poll().has_value()) {
 #ifdef __USING_WINDOWS__
     Sleep(100);
 #else

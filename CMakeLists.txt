@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.5)
 project(subprocess VERSION 2.2 LANGUAGES CXX)
 
-set(CMAKE_CXX_STANDARD 11 CACHE STRING "C++ standard to use")
+set(CMAKE_CXX_STANDARD 17 CACHE STRING "C++ standard to use")
 option(EXPORT_COMPILE_COMMANDS "create clang compile database" ON)
 option(SUBPROCESS_TESTS "enable subprocess tests" OFF)
 option(SUBPROCESS_INSTALL "enable subprocess install" OFF)
