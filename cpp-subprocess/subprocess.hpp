@@ -55,170 +55,179 @@ Documentation for C++ subprocessing library.
 #include <vector>
 
 #if (defined _MSC_VER) || (defined __MINGW32__)
-  #define __USING_WINDOWS__
+#define __USING_WINDOWS__
 #endif
 
 #ifdef __USING_WINDOWS__
-  #include <codecvt>
+#include <codecvt>
 #endif
 
 extern "C" {
 
-  /*
-   * == Windows API Declarations ==
-   *
-   * Manually declare only the Windows API functions we need instead of
-   * including the full <windows.h> to:
-   *
-   *  1. Keep compile times fast.
-   *  2. Prevent name collisions with common names like min/max.
-   *  3. Make the library self-contained and clean.
-   */
+/*
+ * == Windows API Declarations ==
+ *
+ * Manually declare only the Windows API functions we need instead of
+ * including the full <windows.h> to:
+ *
+ *  1. Keep compile times fast.
+ *  2. Prevent name collisions with common names like min/max.
+ *  3. Make the library self-contained and clean.
+ */
 
-  #ifdef __USING_WINDOWS__
-  
-  #ifndef _WINDEF_
+#ifdef __USING_WINDOWS__
 
-  #define CONST const
-  #define WINAPI __stdcall
-  
-  #define TRUE 1
-  #define FALSE 0
-  
-  #define INFINITE 0xFFFFFFFF
-  
-  #define STATUS_WAIT_0 ((unsigned long)0x00000000L)
-  #define WAIT_OBJECT_0 ((STATUS_WAIT_0) + 0)
-  #define WAIT_TIMEOUT  ((unsigned long)0x00000102L)
-  
-  #define HANDLE_FLAG_INHERIT 0x00000001
-  
-  #define STARTF_USESTDHANDLES 0x00000100
-  
-  #define CREATE_NO_WINDOW           0x08000000
-  #define CREATE_UNICODE_ENVIRONMENT 0x00000400
+#ifndef _WINDEF_
 
-  #define GENERIC_READ   0x80000000
-  #define GENERIC_WRITE  0x40000000
-  #define FILE_SHARE_READ   0x00000001
-  #define FILE_SHARE_WRITE  0x00000002
-  #define OPEN_EXISTING     0x00000003
-  #define FILE_ATTRIBUTE_NORMAL 0x00000080
-  #define INVALID_HANDLE_VALUE ((HANDLE)(-1))
-  
-  #define FORMAT_MESSAGE_ALLOCATE_BUFFER 0x00000100
-  #define FORMAT_MESSAGE_FROM_SYSTEM     0x00001000
-  #define FORMAT_MESSAGE_IGNORE_INSERTS  0x00000200
-  #define FORMAT_MESSAGE_MAX_WIDTH_MASK  0x000000FF
-  
-  #define LANG_NEUTRAL  0x00
-  #define SUBLANG_DEFAULT 0x01
-  
-  #ifdef _M_CEE_PURE
-    typedef System::ArgIterator va_list;
-  #else
-    typedef char* va_list;
-  #endif
-  
-  typedef void VOID;
-  typedef char CHAR;
-  typedef wchar_t WCHAR;
-  
-  typedef int BOOL;
-  typedef unsigned int UINT;
-  typedef unsigned short USHORT;
-  typedef unsigned short WORD;
-  typedef unsigned long DWORD;
-  
-  typedef size_t SIZE_T;
-  
-  typedef void* PVOID;
-  typedef void* LPVOID;
-  typedef const void* LPCVOID;
-  
-  typedef void* HANDLE;
-  typedef HANDLE HLOCAL;
-  typedef HANDLE* PHANDLE;
-  
-  typedef DWORD* LPDWORD;
-  
-  typedef CHAR* LPSTR;
-  typedef WCHAR* LPWCH;
-  typedef WCHAR* LPWSTR;
-  typedef CONST WCHAR* LPCWSTR;
-  
-  typedef struct _SECURITY_ATTRIBUTES SECURITY_ATTRIBUTES, * LPSECURITY_ATTRIBUTES;
-  typedef struct _PROCESS_INFORMATION PROCESS_INFORMATION, * LPPROCESS_INFORMATION;
-  typedef struct _STARTUPINFOW STARTUPINFOW, * LPSTARTUPINFOW;
+#define CONST const
+#define WINAPI __stdcall
 
-  typedef struct _SP_SECURITY_ATTRIBUTES {
-      DWORD nLength;
-      LPVOID lpSecurityDescriptor;
-      BOOL bInheritHandle;
-  } SP_SECURITY_ATTRIBUTES, * SP_LPSECURITY_ATTRIBUTES;
-  
-  typedef struct _SP_PROCESS_INFORMATION {
-      HANDLE hProcess;
-      HANDLE hThread;
-      DWORD dwProcessId;
-      DWORD dwThreadId;
-  } SP_PROCESS_INFORMATION, * SP_LPPROCESS_INFORMATION;
-  
-  typedef struct _SP_STARTUPINFOW {
-      DWORD cb;
-      LPWSTR lpReserved;
-      LPWSTR lpDesktop;
-      LPWSTR lpTitle;
-      DWORD dwX;
-      DWORD dwY;
-      DWORD dwXSize;
-      DWORD dwYSize;
-      DWORD dwXCountChars;
-      DWORD dwYCountChars;
-      DWORD dwFillAttribute;
-      DWORD dwFlags;
-      WORD wShowWindow;
-      WORD cbReserved2;
-      unsigned char* lpReserved2;
-      HANDLE hStdInput;
-      HANDLE hStdOutput;
-      HANDLE hStdError;
-  } SP_STARTUPINFOW, * SP_LPSTARTUPINFOW;
-  
-   __declspec(dllimport) BOOL   WINAPI CloseHandle(HANDLE);
-   __declspec(dllimport) HANDLE WINAPI CreateFileW(LPCWSTR, DWORD, DWORD, LPSECURITY_ATTRIBUTES, DWORD, DWORD, HANDLE);
-   __declspec(dllimport) BOOL   WINAPI CreatePipe(PHANDLE, PHANDLE, LPSECURITY_ATTRIBUTES, DWORD);
-   __declspec(dllimport) BOOL   WINAPI CreateProcessW(LPCWSTR, LPWSTR, LPSECURITY_ATTRIBUTES, LPSECURITY_ATTRIBUTES, BOOL, DWORD, LPVOID, LPCWSTR, LPSTARTUPINFOW, LPPROCESS_INFORMATION);
-   __declspec(dllimport) BOOL   WINAPI FreeEnvironmentStringsW(LPWCH);
-   __declspec(dllimport) BOOL   WINAPI GetExitCodeProcess(HANDLE, LPDWORD);
-   __declspec(dllimport) BOOL   WINAPI SetHandleInformation(HANDLE, DWORD, DWORD);
-   __declspec(dllimport) BOOL   WINAPI TerminateProcess(HANDLE, UINT);
-   __declspec(dllimport) DWORD  WINAPI FormatMessageA(DWORD, LPCVOID, DWORD, DWORD, LPSTR, DWORD, va_list*);
-   __declspec(dllimport) DWORD  WINAPI GetLastError(VOID);
-   __declspec(dllimport) DWORD  WINAPI WaitForSingleObject(HANDLE, DWORD);
-   __declspec(dllimport) HLOCAL WINAPI LocalFree(HLOCAL);
-   __declspec(dllimport) LPWSTR WINAPI GetEnvironmentStringsW(VOID);
-  
-  #define ZeroMemory(Destination,Length) memset((Destination),0,(Length))
-  #define MAKELANGID(p, s) ((((WORD)(s)) << 10) | (WORD)(p))
+#define TRUE 1
+#define FALSE 0
 
-  #else
+#define INFINITE 0xFFFFFFFF
 
-  #define SP_SECURITY_ATTRIBUTES SECURITY_ATTRIBUTES
-  #define SP_PROCESS_INFORMATION PROCESS_INFORMATION
-  #define SP_STARTUPINFOW        STARTUPINFOW
+#define STATUS_WAIT_0 ((unsigned long)0x00000000L)
+#define WAIT_OBJECT_0 ((STATUS_WAIT_0) + 0)
+#define WAIT_TIMEOUT ((unsigned long)0x00000102L)
 
-  #endif
+#define HANDLE_FLAG_INHERIT 0x00000001
 
-  #include <io.h>
-  #include <cwchar>
+#define STARTF_USESTDHANDLES 0x00000100
+
+#define CREATE_NO_WINDOW 0x08000000
+#define CREATE_UNICODE_ENVIRONMENT 0x00000400
+
+#define GENERIC_READ 0x80000000
+#define GENERIC_WRITE 0x40000000
+#define FILE_SHARE_READ 0x00000001
+#define FILE_SHARE_WRITE 0x00000002
+#define OPEN_EXISTING 0x00000003
+#define FILE_ATTRIBUTE_NORMAL 0x00000080
+#define INVALID_HANDLE_VALUE ((HANDLE)(-1))
+
+#define FORMAT_MESSAGE_ALLOCATE_BUFFER 0x00000100
+#define FORMAT_MESSAGE_FROM_SYSTEM 0x00001000
+#define FORMAT_MESSAGE_IGNORE_INSERTS 0x00000200
+#define FORMAT_MESSAGE_MAX_WIDTH_MASK 0x000000FF
+
+#define LANG_NEUTRAL 0x00
+#define SUBLANG_DEFAULT 0x01
+
+#ifdef _M_CEE_PURE
+typedef System::ArgIterator va_list;
 #else
-  #include <sys/wait.h>
-  #include <unistd.h>
+typedef char *va_list;
 #endif
-  #include <csignal>
-  #include <fcntl.h>
-  #include <sys/types.h>
+
+typedef void VOID;
+typedef char CHAR;
+typedef wchar_t WCHAR;
+
+typedef int BOOL;
+typedef unsigned int UINT;
+typedef unsigned short USHORT;
+typedef unsigned short WORD;
+typedef unsigned long DWORD;
+
+typedef size_t SIZE_T;
+
+typedef void *PVOID;
+typedef void *LPVOID;
+typedef const void *LPCVOID;
+
+typedef void *HANDLE;
+typedef HANDLE HLOCAL;
+typedef HANDLE *PHANDLE;
+
+typedef DWORD *LPDWORD;
+
+typedef CHAR *LPSTR;
+typedef WCHAR *LPWCH;
+typedef WCHAR *LPWSTR;
+typedef CONST WCHAR *LPCWSTR;
+
+typedef struct _SECURITY_ATTRIBUTES SECURITY_ATTRIBUTES, *LPSECURITY_ATTRIBUTES;
+typedef struct _PROCESS_INFORMATION PROCESS_INFORMATION, *LPPROCESS_INFORMATION;
+typedef struct _STARTUPINFOW STARTUPINFOW, *LPSTARTUPINFOW;
+
+typedef struct _SP_SECURITY_ATTRIBUTES {
+    DWORD nLength;
+    LPVOID lpSecurityDescriptor;
+    BOOL bInheritHandle;
+} SP_SECURITY_ATTRIBUTES, *SP_LPSECURITY_ATTRIBUTES;
+
+typedef struct _SP_PROCESS_INFORMATION {
+    HANDLE hProcess;
+    HANDLE hThread;
+    DWORD dwProcessId;
+    DWORD dwThreadId;
+} SP_PROCESS_INFORMATION, *SP_LPPROCESS_INFORMATION;
+
+typedef struct _SP_STARTUPINFOW {
+    DWORD cb;
+    LPWSTR lpReserved;
+    LPWSTR lpDesktop;
+    LPWSTR lpTitle;
+    DWORD dwX;
+    DWORD dwY;
+    DWORD dwXSize;
+    DWORD dwYSize;
+    DWORD dwXCountChars;
+    DWORD dwYCountChars;
+    DWORD dwFillAttribute;
+    DWORD dwFlags;
+    WORD wShowWindow;
+    WORD cbReserved2;
+    unsigned char *lpReserved2;
+    HANDLE hStdInput;
+    HANDLE hStdOutput;
+    HANDLE hStdError;
+} SP_STARTUPINFOW, *SP_LPSTARTUPINFOW;
+
+__declspec(dllimport) BOOL WINAPI CloseHandle(HANDLE);
+__declspec(dllimport) HANDLE WINAPI CreateFileW(LPCWSTR, DWORD, DWORD, LPSECURITY_ATTRIBUTES, DWORD, DWORD, HANDLE);
+__declspec(dllimport) BOOL WINAPI CreatePipe(PHANDLE, PHANDLE, LPSECURITY_ATTRIBUTES, DWORD);
+__declspec(dllimport) BOOL WINAPI CreateProcessW(LPCWSTR,
+                                                 LPWSTR,
+                                                 LPSECURITY_ATTRIBUTES,
+                                                 LPSECURITY_ATTRIBUTES,
+                                                 BOOL,
+                                                 DWORD,
+                                                 LPVOID,
+                                                 LPCWSTR,
+                                                 LPSTARTUPINFOW,
+                                                 LPPROCESS_INFORMATION);
+__declspec(dllimport) BOOL WINAPI FreeEnvironmentStringsW(LPWCH);
+__declspec(dllimport) BOOL WINAPI GetExitCodeProcess(HANDLE, LPDWORD);
+__declspec(dllimport) BOOL WINAPI SetHandleInformation(HANDLE, DWORD, DWORD);
+__declspec(dllimport) BOOL WINAPI TerminateProcess(HANDLE, UINT);
+__declspec(dllimport) DWORD WINAPI FormatMessageA(DWORD, LPCVOID, DWORD, DWORD, LPSTR, DWORD, va_list *);
+__declspec(dllimport) DWORD WINAPI GetLastError(VOID);
+__declspec(dllimport) DWORD WINAPI WaitForSingleObject(HANDLE, DWORD);
+__declspec(dllimport) HLOCAL WINAPI LocalFree(HLOCAL);
+__declspec(dllimport) LPWSTR WINAPI GetEnvironmentStringsW(VOID);
+
+#define ZeroMemory(Destination, Length) memset((Destination), 0, (Length))
+#define MAKELANGID(p, s) ((((WORD)(s)) << 10) | (WORD)(p))
+
+#else
+
+#define SP_SECURITY_ATTRIBUTES SECURITY_ATTRIBUTES
+#define SP_PROCESS_INFORMATION PROCESS_INFORMATION
+#define SP_STARTUPINFOW STARTUPINFOW
+
+#endif
+
+#include <cwchar>
+#include <io.h>
+#else
+#include <sys/wait.h>
+#include <unistd.h>
+#endif
+#include <csignal>
+#include <fcntl.h>
+#include <sys/types.h>
 }
 
 // The Microsoft C++ compiler issues deprecation warnings
@@ -226,15 +235,15 @@ extern "C" {
 // Its preferred implementations have a leading underscore.
 // See: https://learn.microsoft.com/en-us/cpp/c-runtime-library/compatibility.
 #if (defined _MSC_VER)
-  #define subprocess_close _close
-  #define subprocess_fileno _fileno
-  #define subprocess_open _open
-  #define subprocess_write _write
+#define subprocess_close _close
+#define subprocess_fileno _fileno
+#define subprocess_open _open
+#define subprocess_write _write
 #else
-  #define subprocess_close close
-  #define subprocess_fileno fileno
-  #define subprocess_open open
-  #define subprocess_write write
+#define subprocess_close close
+#define subprocess_fileno fileno
+#define subprocess_open open
+#define subprocess_write write
 #endif
 
 /*!
@@ -259,7 +268,6 @@ extern "C" {
  *    This includes some metaprogramming and helper classes.
  */
 
-
 namespace subprocess {
 
 // Max buffer size allocated on stack for read error
@@ -270,7 +278,6 @@ static const size_t SP_MAX_ERR_BUF_SIZ = 1024;
 // If the data exceeds this capacity, the buffer size is grown
 // by 1.5 times its previous capacity
 static const size_t DEFAULT_BUF_CAP_BYTES = 8192;
-
 
 /*-----------------------------------------------
  *    EXCEPTION CLASSES
@@ -284,30 +291,23 @@ static const size_t DEFAULT_BUF_CAP_BYTES = 8192;
  * can be thrown.
  *
  */
-class CalledProcessError: public std::runtime_error
-{
-public:
-  int retcode;
-  CalledProcessError(const std::string& error_msg, int retcode):
-    std::runtime_error(error_msg), retcode(retcode)
-  {}
+class CalledProcessError : public std::runtime_error {
+  public:
+    int retcode;
+    CalledProcessError(const std::string &error_msg, int retcode) : std::runtime_error(error_msg), retcode(retcode) {}
 };
-
 
 /*!
  * class: TimeoutExpired
  * Thrown when a timeout is exceeded during wait() or communicate().
  * The message contains the operation that timed out and the timeout value.
  */
-class TimeoutExpired: public std::runtime_error
-{
-public:
-  int timeout_ms;
-  TimeoutExpired(const std::string& error_msg, int timeout_ms_val):
-    std::runtime_error(error_msg), timeout_ms(timeout_ms_val)
-  {}
+class TimeoutExpired : public std::runtime_error {
+  public:
+    int timeout_ms;
+    TimeoutExpired(const std::string &error_msg, int timeout_ms_val)
+        : std::runtime_error(error_msg), timeout_ms(timeout_ms_val) {}
 };
-
 
 /*!
  * class: OSError
@@ -319,23 +319,20 @@ public:
  * Its usual that the API exception specification would have
  * this exception together with CalledProcessError.
  */
-class OSError: public std::runtime_error
-{
-public:
-  OSError(const std::string& err_msg, int err_code):
-    std::runtime_error( err_msg + ": " + std::strerror(err_code) )
-  {}
+class OSError : public std::runtime_error {
+  public:
+    OSError(const std::string &err_msg, int err_code) : std::runtime_error(err_msg + ": " + std::strerror(err_code)) {}
 };
 
 //--------------------------------------------------------------------
 
-//Environment Variable types
+// Environment Variable types
 #ifndef __USING_WINDOWS__
-	using platform_str_t = std::string;
-	using platform_char_t = char;
+using platform_str_t = std::string;
+using platform_char_t = char;
 #else
-	using platform_str_t = std::wstring;
-	using platform_char_t = wchar_t;
+using platform_str_t = std::wstring;
+using platform_char_t = wchar_t;
 #endif
 using env_str_t = platform_str_t;
 using env_char_t = platform_char_t;
@@ -343,122 +340,113 @@ using env_map_t = std::map<platform_str_t, platform_str_t>;
 using env_vector_t = std::vector<platform_char_t>;
 
 //--------------------------------------------------------------------
-namespace util
-{
+namespace util {
 #ifdef __USING_WINDOWS__
-  inline void quote_argument(const std::wstring &argument, std::wstring &command_line,
-                      bool force)
-  {
+inline void quote_argument(const std::wstring &argument, std::wstring &command_line, bool force) {
     //
     // Unless we're told otherwise, don't quote unless we actually
     // need to do so --- hopefully avoid problems if programs won't
     // parse quotes properly
     //
 
-    if (force == false && argument.empty() == false &&
-        argument.find_first_of(L" \t\n\v") == argument.npos) {
-      command_line.append(argument);
+    if (force == false && argument.empty() == false && argument.find_first_of(L" \t\n\v") == argument.npos) {
+        command_line.append(argument);
+    } else {
+        command_line.push_back(L'"');
+
+        for (auto it = argument.begin();; ++it) {
+            unsigned number_backslashes = 0;
+
+            while (it != argument.end() && *it == L'\\') {
+                ++it;
+                ++number_backslashes;
+            }
+
+            if (it == argument.end()) {
+
+                //
+                // Escape all backslashes, but let the terminating
+                // double quotation mark we add below be interpreted
+                // as a metacharacter.
+                //
+
+                command_line.append(number_backslashes * 2, L'\\');
+                break;
+            } else if (*it == L'"') {
+
+                //
+                // Escape all backslashes and the following
+                // double quotation mark.
+                //
+
+                command_line.append(number_backslashes * 2 + 1, L'\\');
+                command_line.push_back(*it);
+            } else {
+
+                //
+                // Backslashes aren't special here.
+                //
+
+                command_line.append(number_backslashes, L'\\');
+                command_line.push_back(*it);
+            }
+        }
+
+        command_line.push_back(L'"');
     }
-    else {
-      command_line.push_back(L'"');
+}
 
-      for (auto it = argument.begin();; ++it) {
-        unsigned number_backslashes = 0;
-
-        while (it != argument.end() && *it == L'\\') {
-          ++it;
-          ++number_backslashes;
-        }
-
-        if (it == argument.end()) {
-
-          //
-          // Escape all backslashes, but let the terminating
-          // double quotation mark we add below be interpreted
-          // as a metacharacter.
-          //
-
-          command_line.append(number_backslashes * 2, L'\\');
-          break;
-        }
-        else if (*it == L'"') {
-
-          //
-          // Escape all backslashes and the following
-          // double quotation mark.
-          //
-
-          command_line.append(number_backslashes * 2 + 1, L'\\');
-          command_line.push_back(*it);
-        }
-        else {
-
-          //
-          // Backslashes aren't special here.
-          //
-
-          command_line.append(number_backslashes, L'\\');
-          command_line.push_back(*it);
-        }
-      }
-
-      command_line.push_back(L'"');
-    }
-  }
-
-  inline std::string get_last_error(DWORD errorMessageID)
-  {
+inline std::string get_last_error(DWORD errorMessageID) {
     if (errorMessageID == 0)
-      return std::string();
+        return std::string();
 
     LPSTR messageBuffer = nullptr;
-    size_t size = FormatMessageA(
-        FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM |
-            FORMAT_MESSAGE_IGNORE_INSERTS | FORMAT_MESSAGE_MAX_WIDTH_MASK,
-        NULL, errorMessageID, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
-        (LPSTR)&messageBuffer, 0, NULL);
+    size_t size = FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS |
+                                     FORMAT_MESSAGE_MAX_WIDTH_MASK,
+                                 NULL,
+                                 errorMessageID,
+                                 MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+                                 (LPSTR)&messageBuffer,
+                                 0,
+                                 NULL);
 
     std::string message(messageBuffer, size);
 
     LocalFree(messageBuffer);
 
     return message;
-  }
+}
 
-  inline FILE *file_from_handle(HANDLE h, const char *mode)
-  {
+inline FILE *file_from_handle(HANDLE h, const char *mode) {
     int md;
     if (!mode) {
-      throw OSError("invalid_mode", 0);
+        throw OSError("invalid_mode", 0);
     }
 
     if (mode[0] == 'w') {
-      md = _O_WRONLY;
-    }
-    else if (mode[0] == 'r') {
-      md = _O_RDONLY;
-    }
-    else {
-      throw OSError("file_from_handle", 0);
+        md = _O_WRONLY;
+    } else if (mode[0] == 'r') {
+        md = _O_RDONLY;
+    } else {
+        throw OSError("file_from_handle", 0);
     }
 
     int os_fhandle = _open_osfhandle((intptr_t)h, md);
     if (os_fhandle == -1) {
-      CloseHandle(h);
-      throw OSError("_open_osfhandle", 0);
+        CloseHandle(h);
+        throw OSError("_open_osfhandle", 0);
     }
 
     FILE *fp = _fdopen(os_fhandle, mode);
     if (fp == 0) {
-      subprocess_close(os_fhandle);
-      throw OSError("_fdopen", 0);
+        subprocess_close(os_fhandle);
+        throw OSError("_fdopen", 0);
     }
 
     return fp;
-  }
+}
 
-  inline void configure_pipe(HANDLE* read_handle, HANDLE* write_handle, HANDLE* child_handle)
-  {
+inline void configure_pipe(HANDLE *read_handle, HANDLE *write_handle, HANDLE *child_handle) {
     SP_SECURITY_ATTRIBUTES saAttr;
 
     // Set the bInheritHandle flag so pipe handles are inherited.
@@ -468,257 +456,242 @@ namespace util
 
     // Create a pipe for the child process's STDIN.
     if (!CreatePipe(read_handle, write_handle, reinterpret_cast<LPSECURITY_ATTRIBUTES>(&saAttr), 0))
-      throw OSError("CreatePipe", 0);
+        throw OSError("CreatePipe", 0);
 
     // Ensure the write handle to the pipe for STDIN is not inherited.
     if (!SetHandleInformation(*child_handle, HANDLE_FLAG_INHERIT, 0))
-      throw OSError("SetHandleInformation", 0);
-  }
+        throw OSError("SetHandleInformation", 0);
+}
 
-  // env_map_t MapFromWindowsEnvironment()
-  // * Imports current Environment in a C-string table
-  // * Parses the strings by splitting on the first "=" per line
-  // * Creates a map of the variables
-  // * Returns the map
-  inline env_map_t MapFromWindowsEnvironment(){
-      wchar_t *variable_strings_ptr;
-      wchar_t *environment_strings_ptr;
-      std::wstring delimiter(L"=");
-      int del_len = delimiter.length();
-      env_map_t mapped_environment;
+// env_map_t MapFromWindowsEnvironment()
+// * Imports current Environment in a C-string table
+// * Parses the strings by splitting on the first "=" per line
+// * Creates a map of the variables
+// * Returns the map
+inline env_map_t MapFromWindowsEnvironment() {
+    wchar_t *variable_strings_ptr;
+    wchar_t *environment_strings_ptr;
+    std::wstring delimiter(L"=");
+    int del_len = delimiter.length();
+    env_map_t mapped_environment;
 
-      // Get a pointer to the environment block.
-      environment_strings_ptr = GetEnvironmentStringsW();
-      // If the returned pointer is NULL, exit.
-      if (environment_strings_ptr == NULL)
-      {
-          throw OSError("GetEnvironmentStringsW", 0);
-      }
+    // Get a pointer to the environment block.
+    environment_strings_ptr = GetEnvironmentStringsW();
+    // If the returned pointer is NULL, exit.
+    if (environment_strings_ptr == NULL) {
+        throw OSError("GetEnvironmentStringsW", 0);
+    }
 
-      // Variable strings are separated by NULL byte, and the block is
-      // terminated by a NULL byte.
+    // Variable strings are separated by NULL byte, and the block is
+    // terminated by a NULL byte.
 
-      variable_strings_ptr = (wchar_t *) environment_strings_ptr;
+    variable_strings_ptr = (wchar_t *)environment_strings_ptr;
 
-      //Since the environment map ends with a null, we can loop until we find it.
-      while (*variable_strings_ptr)
-      {
-          // Create a string from Variable String
-          platform_str_t current_line(variable_strings_ptr);
-          // Find the first "equals" sign.
-          auto pos = current_line.find(delimiter);
-          // Assuming it's not missing ...
-          if(pos!=std::wstring::npos){
-              // ... parse the key and value.
-              platform_str_t key = current_line.substr(0, pos);
-              platform_str_t value = current_line.substr(pos + del_len);
-              // Map the entry.
-              mapped_environment[key] = value;
-          }
-          // Jump to next line in the environment map.
-          variable_strings_ptr += std::wcslen(variable_strings_ptr) + 1;
-      }
-      // We're done with the old environment map buffer.
-      FreeEnvironmentStringsW(environment_strings_ptr);
+    // Since the environment map ends with a null, we can loop until we find it.
+    while (*variable_strings_ptr) {
+        // Create a string from Variable String
+        platform_str_t current_line(variable_strings_ptr);
+        // Find the first "equals" sign.
+        auto pos = current_line.find(delimiter);
+        // Assuming it's not missing ...
+        if (pos != std::wstring::npos) {
+            // ... parse the key and value.
+            platform_str_t key = current_line.substr(0, pos);
+            platform_str_t value = current_line.substr(pos + del_len);
+            // Map the entry.
+            mapped_environment[key] = value;
+        }
+        // Jump to next line in the environment map.
+        variable_strings_ptr += std::wcslen(variable_strings_ptr) + 1;
+    }
+    // We're done with the old environment map buffer.
+    FreeEnvironmentStringsW(environment_strings_ptr);
 
-      // Return the map.
-      return mapped_environment;
-  }
+    // Return the map.
+    return mapped_environment;
+}
 
-  // env_vector_t WindowsEnvironmentVectorFromMap(const env_map_t &source_map)
-  // * Creates a vector buffer for the new environment string table
-  // * Copies in the mapped variables
-  // * Returns the vector
-  inline env_vector_t WindowsEnvironmentVectorFromMap(const env_map_t &source_map)
-  {
-	// Make a new environment map buffer.
-	env_vector_t environment_map_buffer;
-	// Give it some space.
-	environment_map_buffer.reserve(4096);
+// env_vector_t WindowsEnvironmentVectorFromMap(const env_map_t &source_map)
+// * Creates a vector buffer for the new environment string table
+// * Copies in the mapped variables
+// * Returns the vector
+inline env_vector_t WindowsEnvironmentVectorFromMap(const env_map_t &source_map) {
+    // Make a new environment map buffer.
+    env_vector_t environment_map_buffer;
+    // Give it some space.
+    environment_map_buffer.reserve(4096);
 
-	// And fill'er up.
-	for(auto kv: source_map){
-	  // Create the line
-	  platform_str_t current_line(kv.first); current_line += L"="; current_line += kv.second;
-	  // Add the line to the buffer.
-	  std::copy(current_line.begin(), current_line.end(), std::back_inserter(environment_map_buffer));
-	  // Append a null
-	  environment_map_buffer.push_back(0);
-	}
-	// Append one last null because of how Windows does it's environment maps.
-	environment_map_buffer.push_back(0);
+    // And fill'er up.
+    for (auto kv : source_map) {
+        // Create the line
+        platform_str_t current_line(kv.first);
+        current_line += L"=";
+        current_line += kv.second;
+        // Add the line to the buffer.
+        std::copy(current_line.begin(), current_line.end(), std::back_inserter(environment_map_buffer));
+        // Append a null
+        environment_map_buffer.push_back(0);
+    }
+    // Append one last null because of how Windows does it's environment maps.
+    environment_map_buffer.push_back(0);
 
-	return environment_map_buffer;
-  }
+    return environment_map_buffer;
+}
 
-  // env_vector_t CreateUpdatedWindowsEnvironmentVector(const env_map_t &changes_map)
-  // * Merges host environment with new mapped variables
-  // * Creates and returns string vector based on map
-  inline env_vector_t CreateUpdatedWindowsEnvironmentVector(const env_map_t &changes_map){
-	// Import the environment map
-	env_map_t environment_map = MapFromWindowsEnvironment();
+// env_vector_t CreateUpdatedWindowsEnvironmentVector(const env_map_t &changes_map)
+// * Merges host environment with new mapped variables
+// * Creates and returns string vector based on map
+inline env_vector_t CreateUpdatedWindowsEnvironmentVector(const env_map_t &changes_map) {
+    // Import the environment map
+    env_map_t environment_map = MapFromWindowsEnvironment();
     // Merge in the changes with overwrite
-	for(auto& it: changes_map)
-	{
-		environment_map[it.first] = it.second;
-	}
+    for (auto &it : changes_map) {
+        environment_map[it.first] = it.second;
+    }
     // Create a Windows-usable Environment Map Buffer
     env_vector_t environment_map_strings_vector = WindowsEnvironmentVectorFromMap(environment_map);
 
-	return environment_map_strings_vector;
-  }
+    return environment_map_strings_vector;
+}
 
 #endif
 
-  /*!
-   * Function: split
-   * Parameters:
-   * [in] str : Input string which needs to be split based upon the
-   *            delimiters provided.
-   * [in] delims : Delimiter characters based upon which the string needs
-   *                to be split. Default constructed to ' '(space) and '\t'(tab)
-   * [out] vector<string> : Vector of strings split at delimiter.
-   */
-  static inline std::vector<std::string>
-  split(const std::string& str, const std::string& delims=" \t")
-  {
+/*!
+ * Function: split
+ * Parameters:
+ * [in] str : Input string which needs to be split based upon the
+ *            delimiters provided.
+ * [in] delims : Delimiter characters based upon which the string needs
+ *                to be split. Default constructed to ' '(space) and '\t'(tab)
+ * [out] vector<string> : Vector of strings split at delimiter.
+ */
+static inline std::vector<std::string> split(const std::string &str, const std::string &delims = " \t") {
     std::vector<std::string> res;
     size_t init = 0;
 
     while (true) {
-      auto pos = str.find_first_of(delims, init);
-      if (pos == std::string::npos) {
-        if (init < str.length())
-          res.emplace_back(str.substr(init));
-        break;
-      }
-      if (pos > init)
-        res.emplace_back(str.substr(init, pos - init));
-      init = pos + 1;
+        auto pos = str.find_first_of(delims, init);
+        if (pos == std::string::npos) {
+            if (init < str.length())
+                res.emplace_back(str.substr(init));
+            break;
+        }
+        if (pos > init)
+            res.emplace_back(str.substr(init, pos - init));
+        init = pos + 1;
     }
 
     return res;
-  }
+}
 
-
-  /*!
-   * Function: join
-   * Parameters:
-   * [in] vec : Vector of strings which needs to be joined to form
-   *            a single string with words separated by a separator char.
-   *  [in] sep : String used to separate 2 words in the joined string.
-   *             Default constructed to ' ' (space).
-   *  [out] string: Joined string.
-   */
-  static inline
-  std::string join(const std::vector<std::string>& vec,
-                   const std::string& sep = " ")
-  {
+/*!
+ * Function: join
+ * Parameters:
+ * [in] vec : Vector of strings which needs to be joined to form
+ *            a single string with words separated by a separator char.
+ *  [in] sep : String used to separate 2 words in the joined string.
+ *             Default constructed to ' ' (space).
+ *  [out] string: Joined string.
+ */
+static inline std::string join(const std::vector<std::string> &vec, const std::string &sep = " ") {
     std::string res;
-    for (auto& elem : vec) res.append(elem + sep);
+    for (auto &elem : vec)
+        res.append(elem + sep);
     res.erase(--res.end());
     return res;
-  }
-
+}
 
 #ifndef __USING_WINDOWS__
-  /*!
-   * Function: set_clo_on_exec
-   * Sets/Resets the FD_CLOEXEC flag on the provided file descriptor
-   * based upon the `set` parameter.
-   * Parameters:
-   * [in] fd : The descriptor on which FD_CLOEXEC needs to be set/reset.
-   * [in] set : If 'true', set FD_CLOEXEC.
-   *            If 'false' unset FD_CLOEXEC.
-   */
-  static inline
-  void set_clo_on_exec(int fd, bool set = true)
-  {
+/*!
+ * Function: set_clo_on_exec
+ * Sets/Resets the FD_CLOEXEC flag on the provided file descriptor
+ * based upon the `set` parameter.
+ * Parameters:
+ * [in] fd : The descriptor on which FD_CLOEXEC needs to be set/reset.
+ * [in] set : If 'true', set FD_CLOEXEC.
+ *            If 'false' unset FD_CLOEXEC.
+ */
+static inline void set_clo_on_exec(int fd, bool set = true) {
     int flags = fcntl(fd, F_GETFD, 0);
     if (flags == -1) {
         throw OSError("fcntl F_GETFD failed", errno);
     }
-    if (set) flags |= FD_CLOEXEC;
-    else flags &= ~FD_CLOEXEC;
+    if (set)
+        flags |= FD_CLOEXEC;
+    else
+        flags &= ~FD_CLOEXEC;
     if (fcntl(fd, F_SETFD, flags) == -1) {
         throw OSError("fcntl F_SETFD failed", errno);
     }
-  }
+}
 
-
-  /*!
-   * Function: pipe_cloexec
-   * Creates a pipe and sets FD_CLOEXEC flag on both
-   * read and write descriptors of the pipe.
-   * Parameters:
-   * [out] : A pair of file descriptors.
-   *         First element of pair is the read descriptor of pipe.
-   *         Second element is the write descriptor of pipe.
-   */
-  static inline
-  std::pair<int, int> pipe_cloexec() noexcept(false)
-  {
+/*!
+ * Function: pipe_cloexec
+ * Creates a pipe and sets FD_CLOEXEC flag on both
+ * read and write descriptors of the pipe.
+ * Parameters:
+ * [out] : A pair of file descriptors.
+ *         First element of pair is the read descriptor of pipe.
+ *         Second element is the write descriptor of pipe.
+ */
+static inline std::pair<int, int> pipe_cloexec() noexcept(false) {
     int pipe_fds[2];
     int res = pipe(pipe_fds);
     if (res) {
-      throw OSError("pipe failure", errno);
+        throw OSError("pipe failure", errno);
     }
 
     set_clo_on_exec(pipe_fds[0]);
     set_clo_on_exec(pipe_fds[1]);
 
     return std::make_pair(pipe_fds[0], pipe_fds[1]);
-  }
+}
 #endif
 
-
-  /*!
-   * Function: write_n
-   * Writes `length` bytes to the file descriptor `fd`
-   * from the buffer `buf`.
-   * Parameters:
-   * [in] fd : The file descriptor to write to.
-   * [in] buf: Buffer from which data needs to be written to fd.
-   * [in] length: The number of bytes that needs to be written from
-   *              `buf` to `fd`.
-   * [out] int : Number of bytes written or -1 in case of failure.
-   */
-  static inline
-  int write_n(int fd, const char* buf, size_t length)
-  {
+/*!
+ * Function: write_n
+ * Writes `length` bytes to the file descriptor `fd`
+ * from the buffer `buf`.
+ * Parameters:
+ * [in] fd : The file descriptor to write to.
+ * [in] buf: Buffer from which data needs to be written to fd.
+ * [in] length: The number of bytes that needs to be written from
+ *              `buf` to `fd`.
+ * [out] int : Number of bytes written or -1 in case of failure.
+ */
+static inline int write_n(int fd, const char *buf, size_t length) {
     size_t nwritten = 0;
     while (nwritten < length) {
-      int written = subprocess_write(fd, buf + nwritten, length - nwritten);
-      if (written == -1) return -1;
-      nwritten += written;
+        int written = subprocess_write(fd, buf + nwritten, length - nwritten);
+        if (written == -1)
+            return -1;
+        nwritten += written;
     }
     return nwritten;
-  }
+}
 
-
-  /*!
-   * Function: read_atmost_n
-   * Reads at the most `read_upto` bytes from the
-   * file object `fp` before returning.
-   * Parameters:
-   * [in] fp : The file object from which it needs to read.
-   * [in] buf : The buffer into which it needs to write the data.
-   * [in] read_upto: Max number of bytes which must be read from `fd`.
-   * [out] int : Number of bytes written to `buf` or read from `fd`
-   *             OR -1 in case of error.
-   *  NOTE: In case of EINTR while reading from socket, this API
-   *  will retry to read from `fd`, but only till the EINTR counter
-   *  reaches 50 after which it will return with whatever data it read.
-   */
-  static inline
-  int read_atmost_n(FILE* fp, char* buf, size_t read_upto)
-  {
+/*!
+ * Function: read_atmost_n
+ * Reads at the most `read_upto` bytes from the
+ * file object `fp` before returning.
+ * Parameters:
+ * [in] fp : The file object from which it needs to read.
+ * [in] buf : The buffer into which it needs to write the data.
+ * [in] read_upto: Max number of bytes which must be read from `fd`.
+ * [out] int : Number of bytes written to `buf` or read from `fd`
+ *             OR -1 in case of error.
+ *  NOTE: In case of EINTR while reading from socket, this API
+ *  will retry to read from `fd`, but only till the EINTR counter
+ *  reaches 50 after which it will return with whatever data it read.
+ */
+static inline int read_atmost_n(FILE *fp, char *buf, size_t read_upto) {
 #ifdef __USING_WINDOWS__
     size_t total_read = 0;
     while (total_read < read_upto) {
         size_t n = fread(buf + total_read, 1, read_upto - total_read, fp);
         if (n == 0) {
-            if (feof(fp)) return (int)total_read;
+            if (feof(fp))
+                return (int)total_read;
             return -1;
         }
         total_read += n;
@@ -730,104 +703,103 @@ namespace util
     int eintr_counter = 0;
 
     while (1) {
-      int read_bytes = read(fd, buf + rbytes, read_upto - rbytes);
-      if (read_bytes == -1) {
-        if (errno == EINTR) {
-          if (eintr_counter >= 50) return -1;
-          eintr_counter++;
-          continue;
+        int read_bytes = read(fd, buf + rbytes, read_upto - rbytes);
+        if (read_bytes == -1) {
+            if (errno == EINTR) {
+                if (eintr_counter >= 50)
+                    return -1;
+                eintr_counter++;
+                continue;
+            }
+            return -1;
         }
-        return -1;
-      }
-      if (read_bytes == 0) return rbytes;
+        if (read_bytes == 0)
+            return rbytes;
 
-      rbytes += read_bytes;
+        rbytes += read_bytes;
     }
     return rbytes;
 #endif
-  }
+}
 
+/*!
+ * Function: read_all
+ * Reads all the available data from `fp` into
+ * `buf`. Internally calls read_atmost_n.
+ * Parameters:
+ * [in] fp : The file object from which to read from.
+ * [in] buf : The buffer of type `class Buffer` into which
+ *            the read data is written to.
+ * [out] int: Number of bytes read OR -1 in case of failure.
+ *
+ * NOTE: `class Buffer` is a exposed public class. See below.
+ */
 
-  /*!
-   * Function: read_all
-   * Reads all the available data from `fp` into
-   * `buf`. Internally calls read_atmost_n.
-   * Parameters:
-   * [in] fp : The file object from which to read from.
-   * [in] buf : The buffer of type `class Buffer` into which
-   *            the read data is written to.
-   * [out] int: Number of bytes read OR -1 in case of failure.
-   *
-   * NOTE: `class Buffer` is a exposed public class. See below.
-   */
-
-  static inline int read_all(FILE* fp, std::vector<char>& buf)
-  {
+static inline int read_all(FILE *fp, std::vector<char> &buf) {
     auto buffer = buf.data();
     int total_bytes_read = 0;
     int fill_sz = buf.size();
 
     while (1) {
-      const int rd_bytes = read_atmost_n(fp, buffer, fill_sz);
+        const int rd_bytes = read_atmost_n(fp, buffer, fill_sz);
 
-      if (rd_bytes == -1) { // Read finished
-        if (total_bytes_read == 0) return -1;
-        break;
+        if (rd_bytes == -1) { // Read finished
+            if (total_bytes_read == 0)
+                return -1;
+            break;
 
-      } else if (rd_bytes == fill_sz) { // Buffer full
-        const auto orig_sz = buf.size();
-        const auto new_sz = orig_sz * 2;
-        buf.resize(new_sz);
-        fill_sz = new_sz - orig_sz;
+        } else if (rd_bytes == fill_sz) { // Buffer full
+            const auto orig_sz = buf.size();
+            const auto new_sz = orig_sz * 2;
+            buf.resize(new_sz);
+            fill_sz = new_sz - orig_sz;
 
-        //update the buffer pointer
-        buffer = buf.data();
-        total_bytes_read += rd_bytes;
-        buffer += total_bytes_read;
+            // update the buffer pointer
+            buffer = buf.data();
+            total_bytes_read += rd_bytes;
+            buffer += total_bytes_read;
 
-      } else { // Partial data ? Continue reading
-        total_bytes_read += rd_bytes;
-        fill_sz -= rd_bytes;
-        break;
-      }
+        } else { // Partial data ? Continue reading
+            total_bytes_read += rd_bytes;
+            fill_sz -= rd_bytes;
+            break;
+        }
     }
-    buf.erase(buf.begin()+total_bytes_read, buf.end()); // remove extra nulls
+    buf.erase(buf.begin() + total_bytes_read, buf.end()); // remove extra nulls
     return total_bytes_read;
-  }
+}
 
 #ifndef __USING_WINDOWS__
-  /*!
-   * Function: wait_for_child_exit
-   * Waits for the process with pid `pid` to exit
-   * and returns its status.
-   * Parameters:
-   * [in] pid : The pid of the process.
-   * [out] pair<int, int>:
-   *    pair.first : Return code of the waitpid call.
-   *    pair.second : Exit status of the process.
-   *
-   *  NOTE: This is a blocking call as in, it will loop
-   *  till the child is exited.
-   */
-  static inline
-  std::pair<int, int> wait_for_child_exit(int pid)
-  {
+/*!
+ * Function: wait_for_child_exit
+ * Waits for the process with pid `pid` to exit
+ * and returns its status.
+ * Parameters:
+ * [in] pid : The pid of the process.
+ * [out] pair<int, int>:
+ *    pair.first : Return code of the waitpid call.
+ *    pair.second : Exit status of the process.
+ *
+ *  NOTE: This is a blocking call as in, it will loop
+ *  till the child is exited.
+ */
+static inline std::pair<int, int> wait_for_child_exit(int pid) {
     int status = 0;
     int ret = -1;
     while (1) {
-      ret = waitpid(pid, &status, 0);
-      if (ret == -1) break;
-      if (ret == 0) continue;
-      return std::make_pair(ret, status);
+        ret = waitpid(pid, &status, 0);
+        if (ret == -1)
+            break;
+        if (ret == 0)
+            continue;
+        return std::make_pair(ret, status);
     }
 
     return std::make_pair(ret, status);
-  }
+}
 #endif
 
 } // end namespace util
-
-
 
 /* -------------------------------
  *     Popen Arguments
@@ -840,8 +812,8 @@ namespace util
  * Default value is 0.
  */
 struct bufsize {
-  explicit bufsize(int sz): bufsiz(sz) {}
-  int  bufsiz = 0;
+    explicit bufsize(int sz) : bufsiz(sz) {}
+    int bufsiz = 0;
 };
 
 /*!
@@ -850,8 +822,8 @@ struct bufsize {
  * Default value is false.
  */
 struct defer_spawn {
-  explicit defer_spawn(bool d): defer(d) {}
-  bool defer  = false;
+    explicit defer_spawn(bool d) : defer(d) {}
+    bool defer = false;
 };
 
 /*!
@@ -864,8 +836,8 @@ struct defer_spawn {
  * Default value is false.
  */
 struct close_fds {
-  explicit close_fds(bool c): close_all(c) {}
-  bool close_all = false;
+    explicit close_fds(bool c) : close_all(c) {}
+    bool close_all = false;
 };
 
 /*!
@@ -875,39 +847,38 @@ struct close_fds {
  * Default value is false.
  */
 struct session_leader {
-  explicit session_leader(bool sl): leader_(sl) {}
-  bool leader_ = false;
+    explicit session_leader(bool sl) : leader_(sl) {}
+    bool leader_ = false;
 };
 
 struct shell {
-  explicit shell(bool s): shell_(s) {}
-  bool shell_ = false;
+    explicit shell(bool s) : shell_(s) {}
+    bool shell_ = false;
 };
 
 struct check_arg {
-  bool val;
-  explicit check_arg(bool v): val(v) {}
+    bool val;
+    explicit check_arg(bool v) : val(v) {}
 };
 
 struct capture_output_arg {
-  bool val;
-  explicit capture_output_arg(bool v): val(v) {}
+    bool val;
+    explicit capture_output_arg(bool v) : val(v) {}
 };
 
 struct timeout_arg {
-  int ms;
-  explicit timeout_arg(int t): ms(t) {}
+    int ms;
+    explicit timeout_arg(int t) : ms(t) {}
 };
 
 /*!
  * Base class for all arguments involving string value.
  */
-struct string_arg
-{
-  string_arg(const char* arg): arg_value(arg) {}
-  string_arg(std::string&& arg): arg_value(std::move(arg)) {}
-  string_arg(const std::string& arg): arg_value(arg) {}
-  std::string arg_value;
+struct string_arg {
+    string_arg(const char *arg) : arg_value(arg) {}
+    string_arg(std::string &&arg) : arg_value(std::move(arg)) {}
+    string_arg(const std::string &arg) : arg_value(arg) {}
+    std::string arg_value;
 };
 
 /*!
@@ -918,10 +889,8 @@ struct string_arg
  *
  * Eg: executable{"ls"}
  */
-struct executable: string_arg
-{
-  template <typename T>
-  executable(T&& arg): string_arg(std::forward<T>(arg)) {}
+struct executable : string_arg {
+    template <typename T> executable(T &&arg) : string_arg(std::forward<T>(arg)) {}
 };
 
 /*!
@@ -930,11 +899,10 @@ struct executable: string_arg
  *
  * Eg: cwd{"/some/path/x"}
  */
-struct cwd
-{
-  explicit cwd(const platform_str_t &cwd): cwd_(cwd) {}
-  explicit cwd(platform_str_t &&cwd): cwd_(std::move(cwd)) {}
-  platform_str_t cwd_;
+struct cwd {
+    explicit cwd(const platform_str_t &cwd) : cwd_(cwd) {}
+    explicit cwd(platform_str_t &&cwd) : cwd_(std::move(cwd)) {}
+    platform_str_t cwd_;
 };
 
 /*!
@@ -943,27 +911,23 @@ struct cwd
  *
  * Eg: environment{{ {"K1", "V1"}, {"K2", "V2"},... }}
  */
-struct environment
-{
-  environment(env_map_t&& env):
-    env_(std::move(env)) {}
-  explicit environment(const env_map_t& env):
-    env_(env) {}
-  env_map_t env_;
+struct environment {
+    environment(env_map_t &&env) : env_(std::move(env)) {}
+    explicit environment(const env_map_t &env) : env_(env) {}
+    env_map_t env_;
 };
-
 
 /*!
  * Used for redirecting input/output/error
  */
 enum IOTYPE {
-  STDOUT = 1,
-  STDERR,
-  PIPE,
-  DEVNULL,
+    STDOUT = 1,
+    STDERR,
+    PIPE,
+    DEVNULL,
 };
 
-//TODO: A common base/interface for below stream structures ??
+// TODO: A common base/interface for below stream structures ??
 
 /*!
  * Option to specify the input channel for the child
@@ -976,36 +940,35 @@ enum IOTYPE {
  * OR in case of redirection, output of another Popen
  * input{popen.output()}
  */
-struct input
-{
-  // For an already existing file descriptor.
-  explicit input(int fd): rd_ch_(fd) {}
+struct input {
+    // For an already existing file descriptor.
+    explicit input(int fd) : rd_ch_(fd) {}
 
-  // FILE pointer.
-  explicit input (FILE* fp):input(subprocess_fileno(fp)) { assert(fp); }
+    // FILE pointer.
+    explicit input(FILE *fp) : input(subprocess_fileno(fp)) { assert(fp); }
 
-  explicit input(const char* filename) {
-    int fd = subprocess_open(filename, O_RDONLY);
-    if (fd == -1) throw OSError("File not found: ", errno);
-    rd_ch_ = fd;
-  }
-  explicit input(IOTYPE typ) {
-    if (typ == PIPE) {
-#ifndef __USING_WINDOWS__
-      std::tie(rd_ch_, wr_ch_) = util::pipe_cloexec();
-#endif
-    } else if (typ == DEVNULL) {
-      devnull_ = true;
-    } else {
-      throw std::invalid_argument("input: STDOUT/STDERR not allowed");
+    explicit input(const char *filename) {
+        int fd = subprocess_open(filename, O_RDONLY);
+        if (fd == -1)
+            throw OSError("File not found: ", errno);
+        rd_ch_ = fd;
     }
-  }
+    explicit input(IOTYPE typ) {
+        if (typ == PIPE) {
+#ifndef __USING_WINDOWS__
+            std::tie(rd_ch_, wr_ch_) = util::pipe_cloexec();
+#endif
+        } else if (typ == DEVNULL) {
+            devnull_ = true;
+        } else {
+            throw std::invalid_argument("input: STDOUT/STDERR not allowed");
+        }
+    }
 
-  bool devnull_ = false;
-  int rd_ch_ = -1;
-  int wr_ch_ = -1;
+    bool devnull_ = false;
+    int rd_ch_ = -1;
+    int wr_ch_ = -1;
 };
-
 
 /*!
  * Option to specify the output channel for the child
@@ -1017,34 +980,33 @@ struct input
  * Eg: output{PIPE}
  * OR output{"output.txt"}
  */
-struct output
-{
-  explicit output(int fd): wr_ch_(fd) {}
+struct output {
+    explicit output(int fd) : wr_ch_(fd) {}
 
-  explicit output (FILE* fp):output(subprocess_fileno(fp)) { assert(fp); }
+    explicit output(FILE *fp) : output(subprocess_fileno(fp)) { assert(fp); }
 
-  explicit output(const char* filename) {
-    int fd = subprocess_open(filename, O_APPEND | O_CREAT | O_RDWR, 0640);
-    if (fd == -1) throw OSError("File not found: ", errno);
-    wr_ch_ = fd;
-  }
-  explicit output(IOTYPE typ) {
-    if (typ == PIPE) {
-#ifndef __USING_WINDOWS__
-      std::tie(rd_ch_, wr_ch_) = util::pipe_cloexec();
-#endif
-    } else if (typ == DEVNULL) {
-      devnull_ = true;
-    } else {
-      throw std::invalid_argument("output: STDOUT/STDERR not allowed");
+    explicit output(const char *filename) {
+        int fd = subprocess_open(filename, O_APPEND | O_CREAT | O_RDWR, 0640);
+        if (fd == -1)
+            throw OSError("File not found: ", errno);
+        wr_ch_ = fd;
     }
-  }
+    explicit output(IOTYPE typ) {
+        if (typ == PIPE) {
+#ifndef __USING_WINDOWS__
+            std::tie(rd_ch_, wr_ch_) = util::pipe_cloexec();
+#endif
+        } else if (typ == DEVNULL) {
+            devnull_ = true;
+        } else {
+            throw std::invalid_argument("output: STDOUT/STDERR not allowed");
+        }
+    }
 
-  bool devnull_ = false;
-  int rd_ch_ = -1;
-  int wr_ch_ = -1;
+    bool devnull_ = false;
+    int rd_ch_ = -1;
+    int wr_ch_ = -1;
 };
-
 
 /*!
  * Option to specify the error channel for the child
@@ -1054,35 +1016,35 @@ struct output
  * 3. IOTYPE. Usually a PIPE or STDOUT
  *
  */
-struct error
-{
-  explicit error(int fd): wr_ch_(fd) {}
+struct error {
+    explicit error(int fd) : wr_ch_(fd) {}
 
-  explicit error(FILE* fp):error(subprocess_fileno(fp)) { assert(fp); }
+    explicit error(FILE *fp) : error(subprocess_fileno(fp)) { assert(fp); }
 
-  explicit error(const char* filename) {
-    int fd = subprocess_open(filename, O_APPEND | O_CREAT | O_RDWR, 0640);
-    if (fd == -1) throw OSError("File not found: ", errno);
-    wr_ch_ = fd;
-  }
-  explicit error(IOTYPE typ) {
-    if (typ == PIPE) {
-#ifndef __USING_WINDOWS__
-      std::tie(rd_ch_, wr_ch_) = util::pipe_cloexec();
-#endif
-    } else if (typ == STDOUT) {
-      deferred_ = true;
-    } else if (typ == DEVNULL) {
-      devnull_ = true;
-    } else {
-      throw std::invalid_argument("error: STDERR not allowed");
+    explicit error(const char *filename) {
+        int fd = subprocess_open(filename, O_APPEND | O_CREAT | O_RDWR, 0640);
+        if (fd == -1)
+            throw OSError("File not found: ", errno);
+        wr_ch_ = fd;
     }
-  }
+    explicit error(IOTYPE typ) {
+        if (typ == PIPE) {
+#ifndef __USING_WINDOWS__
+            std::tie(rd_ch_, wr_ch_) = util::pipe_cloexec();
+#endif
+        } else if (typ == STDOUT) {
+            deferred_ = true;
+        } else if (typ == DEVNULL) {
+            devnull_ = true;
+        } else {
+            throw std::invalid_argument("error: STDERR not allowed");
+        }
+    }
 
-  bool deferred_ = false;
-  bool devnull_ = false;
-  int rd_ch_ = -1;
-  int wr_ch_ = -1;
+    bool deferred_ = false;
+    bool devnull_ = false;
+    int rd_ch_ = -1;
+    int wr_ch_ = -1;
 };
 
 // Impoverished, meager, needy, truly needy
@@ -1094,37 +1056,30 @@ struct error
 // that won't yield me the consistent syntax which I am
 // aiming for. If you know, then please do let me know.
 
-class preexec_func
-{
-public:
-  preexec_func() {}
+class preexec_func {
+  public:
+    preexec_func() {}
 
-  template <typename Func>
-  explicit preexec_func(Func f): holder_(new FuncHolder<Func>(std::move(f)))
-  {}
+    template <typename Func> explicit preexec_func(Func f) : holder_(new FuncHolder<Func>(std::move(f))) {}
 
-  void operator()() {
-    (*holder_)();
-  }
+    void operator()() { (*holder_)(); }
 
-private:
-  struct HolderBase {
-    virtual void operator()() const = 0;
-    virtual ~HolderBase(){};
-  };
-  template <typename T>
-  struct FuncHolder: HolderBase {
-    FuncHolder(T func): func_(std::move(func)) {}
-    void operator()() const override { func_(); }
-    // The function pointer/reference
-    T func_;
-  };
+  private:
+    struct HolderBase {
+        virtual void operator()() const = 0;
+        virtual ~HolderBase() {};
+    };
+    template <typename T> struct FuncHolder : HolderBase {
+        FuncHolder(T func) : func_(std::move(func)) {}
+        void operator()() const override { func_(); }
+        // The function pointer/reference
+        T func_;
+    };
 
-  std::unique_ptr<HolderBase> holder_ = nullptr;
+    std::unique_ptr<HolderBase> holder_ = nullptr;
 };
 
 // ~~~~ End Popen Args ~~~~
-
 
 /*!
  * class: Buffer
@@ -1137,23 +1092,21 @@ private:
  *
  * OutBuffer and ErrBuffer are just different typedefs to this class.
  */
-class Buffer
-{
-public:
-  Buffer() {}
-  explicit Buffer(size_t cap) { buf.resize(cap); }
-  void set_capacity(size_t cap) { buf.resize(cap); }
+class Buffer {
+  public:
+    Buffer() {}
+    explicit Buffer(size_t cap) { buf.resize(cap); }
+    void set_capacity(size_t cap) { buf.resize(cap); }
 
-public:
-  std::vector<char> buf;
-  size_t length = 0;
+  public:
+    std::vector<char> buf;
+    size_t length = 0;
 };
 
 // Buffer for storing output written to output fd
 using OutBuffer = Buffer;
 // Buffer for storing output written to error fd
 using ErrBuffer = Buffer;
-
 
 // Fwd Decl.
 class Popen;
@@ -1171,24 +1124,21 @@ namespace detail {
 // checking of the arguments provided to 'check_ouput' function
 // wherein the user is not expected to provide an 'ouput' option.
 
-template <typename... T> struct param_pack{};
+template <typename... T> struct param_pack {};
 
 template <typename F, typename T> struct has_type;
 
-template <typename F>
-struct has_type<F, param_pack<>> {
-  static constexpr bool value = false;
+template <typename F> struct has_type<F, param_pack<>> {
+    static constexpr bool value = false;
 };
 
-template <typename F, typename... T>
-struct has_type<F, param_pack<F, T...>> {
-  static constexpr bool value = true;
+template <typename F, typename... T> struct has_type<F, param_pack<F, T...>> {
+    static constexpr bool value = true;
 };
 
-template <typename F, typename H, typename... T>
-struct has_type<F, param_pack<H,T...>> {
-  static constexpr bool value =
-    std::is_same<F, typename std::decay<H>::type>::value ? true : has_type<F, param_pack<T...>>::value;
+template <typename F, typename H, typename... T> struct has_type<F, param_pack<H, T...>> {
+    static constexpr bool value =
+        std::is_same<F, typename std::decay<H>::type>::value ? true : has_type<F, param_pack<T...>>::value;
 };
 
 //----
@@ -1201,28 +1151,27 @@ struct has_type<F, param_pack<H,T...>> {
  * to any arguments and specify them in a way similar to what
  * can be done in python.
  */
-struct ArgumentDeducer
-{
-  ArgumentDeducer(Popen* p): popen_(p) {}
+struct ArgumentDeducer {
+    ArgumentDeducer(Popen *p) : popen_(p) {}
 
-  void set_option(executable&& exe);
-  void set_option(cwd&& cwdir);
-  void set_option(bufsize&& bsiz);
-  void set_option(environment&& env);
-  void set_option(defer_spawn&& defer);
-  void set_option(shell&& sh);
-  void set_option(input&& inp);
-  void set_option(output&& out);
-  void set_option(error&& err);
-  void set_option(close_fds&& cfds);
-  void set_option(preexec_func&& prefunc);
-  void set_option(session_leader&& sleader);
-  void set_option(check_arg&& c);
-  void set_option(capture_output_arg&& co);
-  void set_option(timeout_arg&& t);
+    void set_option(executable &&exe);
+    void set_option(cwd &&cwdir);
+    void set_option(bufsize &&bsiz);
+    void set_option(environment &&env);
+    void set_option(defer_spawn &&defer);
+    void set_option(shell &&sh);
+    void set_option(input &&inp);
+    void set_option(output &&out);
+    void set_option(error &&err);
+    void set_option(close_fds &&cfds);
+    void set_option(preexec_func &&prefunc);
+    void set_option(session_leader &&sleader);
+    void set_option(check_arg &&c);
+    void set_option(capture_output_arg &&co);
+    void set_option(timeout_arg &&t);
 
-private:
-  Popen* popen_ = nullptr;
+  private:
+    Popen *popen_ = nullptr;
 };
 
 #ifndef __USING_WINDOWS__
@@ -1231,29 +1180,23 @@ private:
  * This takes care of all the fork-exec logic
  * in the execute_child API.
  */
-class Child
-{
-public:
-  Child(Popen* p, int err_wr_pipe):
-    parent_(p),
-    err_wr_pipe_(err_wr_pipe)
-  {
-    populate_execve_args();
-  }
+class Child {
+  public:
+    Child(Popen *p, int err_wr_pipe) : parent_(p), err_wr_pipe_(err_wr_pipe) { populate_execve_args(); }
 
-  [[noreturn]] void execute_child();
+    [[noreturn]] void execute_child();
 
-private:
-  void populate_execve_args();
-  [[noreturn]] void exit_with_error(const char *msg, int err);
+  private:
+    void populate_execve_args();
+    [[noreturn]] void exit_with_error(const char *msg, int err);
 
-  // Lets call it parent even though
-  // technically a bit incorrect
-  Popen* parent_ = nullptr;
-  int err_wr_pipe_ = -1;
-  std::vector<char*> cargv_;
-  std::vector<char*> cenvp_;
-  std::vector<std::string> env_storage_;
+    // Lets call it parent even though
+    // technically a bit incorrect
+    Popen *parent_ = nullptr;
+    int err_wr_pipe_ = -1;
+    std::vector<char *> cargv_;
+    std::vector<char *> cenvp_;
+    std::vector<std::string> env_storage_;
 };
 #endif
 
@@ -1266,37 +1209,34 @@ class Streams;
  * with the child process with the means of the correct
  * file descriptor.
  */
-class Communication
-{
-public:
-  Communication(Streams* stream): stream_(stream)
-  {}
-  Communication(const Communication&) = delete;
-  Communication& operator=(const Communication&) = delete;
-  Communication(Communication&&) = default;
-  Communication& operator=(Communication&&) = default;
-public:
-  int send(const char* msg, size_t length);
-  int send(const std::vector<char>& msg);
+class Communication {
+  public:
+    Communication(Streams *stream) : stream_(stream) {}
+    Communication(const Communication &) = delete;
+    Communication &operator=(const Communication &) = delete;
+    Communication(Communication &&) = default;
+    Communication &operator=(Communication &&) = default;
 
-  std::pair<OutBuffer, ErrBuffer> communicate(const char* msg, size_t length, int timeout_ms = -1);
-  std::pair<OutBuffer, ErrBuffer> communicate(const std::vector<char>& msg, int timeout_ms = -1)
-  { return communicate(msg.data(), msg.size(), timeout_ms); }
+  public:
+    int send(const char *msg, size_t length);
+    int send(const std::vector<char> &msg);
 
-  void set_out_buf_cap(size_t cap) { out_buf_cap_ = cap; }
-  void set_err_buf_cap(size_t cap) { err_buf_cap_ = cap; }
+    std::pair<OutBuffer, ErrBuffer> communicate(const char *msg, size_t length, int timeout_ms = -1);
+    std::pair<OutBuffer, ErrBuffer> communicate(const std::vector<char> &msg, int timeout_ms = -1) {
+        return communicate(msg.data(), msg.size(), timeout_ms);
+    }
 
-private:
-  std::pair<OutBuffer, ErrBuffer> communicate_threaded(
-      const char* msg, size_t length, int timeout_ms = -1);
+    void set_out_buf_cap(size_t cap) { out_buf_cap_ = cap; }
+    void set_err_buf_cap(size_t cap) { err_buf_cap_ = cap; }
 
-private:
-  Streams* stream_;
-  size_t out_buf_cap_ = DEFAULT_BUF_CAP_BYTES;
-  size_t err_buf_cap_ = DEFAULT_BUF_CAP_BYTES;
+  private:
+    std::pair<OutBuffer, ErrBuffer> communicate_threaded(const char *msg, size_t length, int timeout_ms = -1);
+
+  private:
+    Streams *stream_;
+    size_t out_buf_cap_ = DEFAULT_BUF_CAP_BYTES;
+    size_t err_buf_cap_ = DEFAULT_BUF_CAP_BYTES;
 };
-
-
 
 /*!
  * This is a helper class to Popen.
@@ -1307,115 +1247,113 @@ private:
  * Read through the data members to understand about the
  * various file descriptors used.
  */
-class Streams
-{
-public:
-  Streams():comm_(this) {}
-  Streams(const Streams&) = delete;
-  Streams& operator=(const Streams&) = delete;
-  Streams(Streams&&) = default;
-  Streams& operator=(Streams&&) = default;
+class Streams {
+  public:
+    Streams() : comm_(this) {}
+    Streams(const Streams &) = delete;
+    Streams &operator=(const Streams &) = delete;
+    Streams(Streams &&) = default;
+    Streams &operator=(Streams &&) = default;
 
-  Popen* parent_ = nullptr;
+    Popen *parent_ = nullptr;
 
-public:
-  void setup_comm_channels();
+  public:
+    void setup_comm_channels();
 
-  void cleanup_fds()
-  {
-    if (write_to_child_ != -1 && read_from_parent_ != -1) {
-      subprocess_close(write_to_child_);
+    void cleanup_fds() {
+        if (write_to_child_ != -1 && read_from_parent_ != -1) {
+            subprocess_close(write_to_child_);
+        }
+        if (write_to_parent_ != -1 && read_from_child_ != -1) {
+            subprocess_close(read_from_child_);
+        }
+        if (err_write_ != -1 && err_read_ != -1) {
+            subprocess_close(err_read_);
+        }
     }
-    if (write_to_parent_ != -1 && read_from_child_ != -1) {
-      subprocess_close(read_from_child_);
+
+    void close_parent_fds() {
+        if (write_to_child_ != -1)
+            subprocess_close(write_to_child_);
+        if (read_from_child_ != -1)
+            subprocess_close(read_from_child_);
+        if (err_read_ != -1)
+            subprocess_close(err_read_);
     }
-    if (err_write_ != -1 && err_read_ != -1) {
-      subprocess_close(err_read_);
+
+    void close_child_fds() {
+        if (write_to_parent_ != -1)
+            subprocess_close(write_to_parent_);
+        if (read_from_parent_ != -1)
+            subprocess_close(read_from_parent_);
+        if (err_write_ != -1)
+            subprocess_close(err_write_);
     }
-  }
 
-  void close_parent_fds()
-  {
-    if (write_to_child_ != -1)  subprocess_close(write_to_child_);
-    if (read_from_child_ != -1) subprocess_close(read_from_child_);
-    if (err_read_ != -1)        subprocess_close(err_read_);
-  }
+    FILE *input() { return input_.get(); }
+    FILE *output() { return output_.get(); }
+    FILE *error() { return error_.get(); }
 
-  void close_child_fds()
-  {
-    if (write_to_parent_ != -1)  subprocess_close(write_to_parent_);
-    if (read_from_parent_ != -1) subprocess_close(read_from_parent_);
-    if (err_write_ != -1)        subprocess_close(err_write_);
-  }
+    void input(FILE *fp) { input_.reset(fp, fclose); }
+    void output(FILE *fp) { output_.reset(fp, fclose); }
+    void error(FILE *fp) { error_.reset(fp, fclose); }
 
-  FILE* input()  { return input_.get(); }
-  FILE* output() { return output_.get(); }
-  FILE* error()  { return error_.get(); }
+    void set_out_buf_cap(size_t cap) { comm_.set_out_buf_cap(cap); }
+    void set_err_buf_cap(size_t cap) { comm_.set_err_buf_cap(cap); }
 
-  void input(FILE* fp)  { input_.reset(fp, fclose); }
-  void output(FILE* fp) { output_.reset(fp, fclose); }
-  void error(FILE* fp)  { error_.reset(fp, fclose); }
+  public: /* Communication forwarding API's */
+    int send(const char *msg, size_t length) { return comm_.send(msg, length); }
 
-  void set_out_buf_cap(size_t cap) { comm_.set_out_buf_cap(cap); }
-  void set_err_buf_cap(size_t cap) { comm_.set_err_buf_cap(cap); }
+    int send(const std::vector<char> &msg) { return comm_.send(msg); }
 
-public: /* Communication forwarding API's */
-  int send(const char* msg, size_t length)
-  { return comm_.send(msg, length); }
+    std::pair<OutBuffer, ErrBuffer> communicate(const char *msg, size_t length, int timeout_ms = -1) {
+        return comm_.communicate(msg, length, timeout_ms);
+    }
 
-  int send(const std::vector<char>& msg)
-  { return comm_.send(msg); }
+    std::pair<OutBuffer, ErrBuffer> communicate(const std::vector<char> &msg, int timeout_ms = -1) {
+        return comm_.communicate(msg, timeout_ms);
+    }
 
-  std::pair<OutBuffer, ErrBuffer> communicate(const char* msg, size_t length, int timeout_ms = -1)
-  { return comm_.communicate(msg, length, timeout_ms); }
-
-  std::pair<OutBuffer, ErrBuffer> communicate(const std::vector<char>& msg, int timeout_ms = -1)
-  { return comm_.communicate(msg, timeout_ms); }
-
-
-public:// Yes they are public
-
-  std::shared_ptr<FILE> input_  = nullptr;
-  std::shared_ptr<FILE> output_ = nullptr;
-  std::shared_ptr<FILE> error_  = nullptr;
+  public: // Yes they are public
+    std::shared_ptr<FILE> input_ = nullptr;
+    std::shared_ptr<FILE> output_ = nullptr;
+    std::shared_ptr<FILE> error_ = nullptr;
 
 #ifdef __USING_WINDOWS__
-  HANDLE g_hChildStd_IN_Rd = nullptr;
-  HANDLE g_hChildStd_IN_Wr = nullptr;
-  HANDLE g_hChildStd_OUT_Rd = nullptr;
-  HANDLE g_hChildStd_OUT_Wr = nullptr;
-  HANDLE g_hChildStd_ERR_Rd = nullptr;
-  HANDLE g_hChildStd_ERR_Wr = nullptr;
+    HANDLE g_hChildStd_IN_Rd = nullptr;
+    HANDLE g_hChildStd_IN_Wr = nullptr;
+    HANDLE g_hChildStd_OUT_Rd = nullptr;
+    HANDLE g_hChildStd_OUT_Wr = nullptr;
+    HANDLE g_hChildStd_ERR_Rd = nullptr;
+    HANDLE g_hChildStd_ERR_Wr = nullptr;
 #endif
 
-  // Buffer size for the IO streams
-  int bufsiz_ = 0;
+    // Buffer size for the IO streams
+    int bufsiz_ = 0;
 
-  // Pipes for communicating with child
+    // Pipes for communicating with child
 
-  // Emulates stdin
-  int write_to_child_   = -1; // Parent owned descriptor
-  int read_from_parent_ = -1; // Child owned descriptor
+    // Emulates stdin
+    int write_to_child_ = -1;   // Parent owned descriptor
+    int read_from_parent_ = -1; // Child owned descriptor
 
-  // Emulates stdout
-  int write_to_parent_ = -1; // Child owned descriptor
-  int read_from_child_ = -1; // Parent owned descriptor
+    // Emulates stdout
+    int write_to_parent_ = -1; // Child owned descriptor
+    int read_from_child_ = -1; // Parent owned descriptor
 
-  // Emulates stderr
-  int err_write_ = -1; // Write error to parent (Child owned)
-  int err_read_  = -1; // Read error from child (Parent owned)
+    // Emulates stderr
+    int err_write_ = -1; // Write error to parent (Child owned)
+    int err_read_ = -1;  // Read error from child (Parent owned)
 
-  bool input_devnull_ = false;
-  bool output_devnull_ = false;
-  bool error_devnull_ = false;
+    bool input_devnull_ = false;
+    bool output_devnull_ = false;
+    bool error_devnull_ = false;
 
-private:
-  Communication comm_;
+  private:
+    Communication comm_;
 };
 
 } // end namespace detail
-
-
 
 /*!
  * class: Popen
@@ -1445,728 +1383,704 @@ private:
  *13. start_process()    - Start the child process. Only to be used when
  *                         `defer_spawn` option was provided in Popen constructor.
  */
-class Popen
-{
-public:
-  friend struct detail::ArgumentDeducer;
+class Popen {
+  public:
+    friend struct detail::ArgumentDeducer;
 #ifndef __USING_WINDOWS__
-  friend class detail::Child;
+    friend class detail::Child;
 #endif
 
-  Popen(Popen&& other) noexcept
-    : stream_(std::move(other.stream_))
-    , cleanup_future_(std::move(other.cleanup_future_))
+    Popen(Popen &&other) noexcept
+        : stream_(std::move(other.stream_)), cleanup_future_(std::move(other.cleanup_future_))
 #if defined(__USING_WINDOWS__)
-    , process_handle_(other.process_handle_)
-    , cmd_line_(std::move(other.cmd_line_))
+          ,
+          process_handle_(other.process_handle_), cmd_line_(std::move(other.cmd_line_))
 #endif
-    , defer_process_start_(other.defer_process_start_)
-    , close_fds_(other.close_fds_)
-    , has_preexec_fn_(other.has_preexec_fn_)
-    , shell_(other.shell_)
-    , session_leader_(other.session_leader_)
-    , exe_name_(std::move(other.exe_name_))
-    , cwd_(std::move(other.cwd_))
-    , env_(std::move(other.env_))
-    , preexec_fn_(std::move(other.preexec_fn_))
-    , vargs_(std::move(other.vargs_))
-    , child_created_(other.child_created_)
-    , child_pid_(other.child_pid_)
-    , retcode_(other.retcode_)
-  {
-    stream_.parent_ = this;
+          ,
+          defer_process_start_(other.defer_process_start_), close_fds_(other.close_fds_),
+          has_preexec_fn_(other.has_preexec_fn_), shell_(other.shell_), session_leader_(other.session_leader_),
+          exe_name_(std::move(other.exe_name_)), cwd_(std::move(other.cwd_)), env_(std::move(other.env_)),
+          preexec_fn_(std::move(other.preexec_fn_)), vargs_(std::move(other.vargs_)), child_created_(other.child_created_),
+          child_pid_(other.child_pid_), retcode_(other.retcode_) {
+        stream_.parent_ = this;
 #if defined(__USING_WINDOWS__)
-    other.process_handle_ = nullptr;
+        other.process_handle_ = nullptr;
 #endif
-    other.child_created_ = false;
-    other.child_pid_ = -1;
-  }
-
-  Popen& operator=(Popen&& other) noexcept
-  {
-    if (this != &other) {
-      stream_ = std::move(other.stream_);
-      stream_.parent_ = this;
-      cleanup_future_ = std::move(other.cleanup_future_);
-#if defined(__USING_WINDOWS__)
-      if (process_handle_) CloseHandle(process_handle_);
-      process_handle_ = other.process_handle_;
-      other.process_handle_ = nullptr;
-      cmd_line_ = std::move(other.cmd_line_);
-#endif
-      defer_process_start_ = other.defer_process_start_;
-      close_fds_ = other.close_fds_;
-      has_preexec_fn_ = other.has_preexec_fn_;
-      shell_ = other.shell_;
-      session_leader_ = other.session_leader_;
-      exe_name_ = std::move(other.exe_name_);
-      cwd_ = std::move(other.cwd_);
-      env_ = std::move(other.env_);
-      preexec_fn_ = std::move(other.preexec_fn_);
-      vargs_ = std::move(other.vargs_);
-      child_created_ = other.child_created_;
-      child_pid_ = other.child_pid_;
-      retcode_ = other.retcode_;
-      other.child_created_ = false;
-      other.child_pid_ = -1;
+        other.child_created_ = false;
+        other.child_pid_ = -1;
     }
-    return *this;
-  }
 
-  template <typename... Args>
-  Popen(const std::string& cmd_args, Args&& ...args)
-  {
-    stream_.parent_ = this;
-    vargs_ = util::split(cmd_args);
-    init_args(std::forward<Args>(args)...);
+    Popen &operator=(Popen &&other) noexcept {
+        if (this != &other) {
+            stream_ = std::move(other.stream_);
+            stream_.parent_ = this;
+            cleanup_future_ = std::move(other.cleanup_future_);
+#if defined(__USING_WINDOWS__)
+            if (process_handle_)
+                CloseHandle(process_handle_);
+            process_handle_ = other.process_handle_;
+            other.process_handle_ = nullptr;
+            cmd_line_ = std::move(other.cmd_line_);
+#endif
+            defer_process_start_ = other.defer_process_start_;
+            close_fds_ = other.close_fds_;
+            has_preexec_fn_ = other.has_preexec_fn_;
+            shell_ = other.shell_;
+            session_leader_ = other.session_leader_;
+            exe_name_ = std::move(other.exe_name_);
+            cwd_ = std::move(other.cwd_);
+            env_ = std::move(other.env_);
+            preexec_fn_ = std::move(other.preexec_fn_);
+            vargs_ = std::move(other.vargs_);
+            child_created_ = other.child_created_;
+            child_pid_ = other.child_pid_;
+            retcode_ = other.retcode_;
+            other.child_created_ = false;
+            other.child_pid_ = -1;
+        }
+        return *this;
+    }
 
-    // Setup the communication channels of the Popen class
-    stream_.setup_comm_channels();
+    template <typename... Args> Popen(const std::string &cmd_args, Args &&...args) {
+        stream_.parent_ = this;
+        vargs_ = util::split(cmd_args);
+        init_args(std::forward<Args>(args)...);
 
-    if (!defer_process_start_) execute_process();
-  }
+        // Setup the communication channels of the Popen class
+        stream_.setup_comm_channels();
 
-  template <typename... Args>
-  Popen(std::initializer_list<const char*> cmd_args, Args&& ...args)
-  {
-    stream_.parent_ = this;
-    vargs_.insert(vargs_.end(), cmd_args.begin(), cmd_args.end());
-    init_args(std::forward<Args>(args)...);
+        if (!defer_process_start_)
+            execute_process();
+    }
 
-    // Setup the communication channels of the Popen class
-    stream_.setup_comm_channels();
+    template <typename... Args> Popen(std::initializer_list<const char *> cmd_args, Args &&...args) {
+        stream_.parent_ = this;
+        vargs_.insert(vargs_.end(), cmd_args.begin(), cmd_args.end());
+        init_args(std::forward<Args>(args)...);
 
-    if (!defer_process_start_) execute_process();
-  }
+        // Setup the communication channels of the Popen class
+        stream_.setup_comm_channels();
 
-  template <typename... Args>
-  Popen(std::vector<std::string> vargs_, Args &&... args) : vargs_(vargs_)
-  {
-    stream_.parent_ = this;
-    init_args(std::forward<Args>(args)...);
+        if (!defer_process_start_)
+            execute_process();
+    }
 
-    // Setup the communication channels of the Popen class
-    stream_.setup_comm_channels();
+    template <typename... Args> Popen(std::vector<std::string> vargs_, Args &&...args) : vargs_(vargs_) {
+        stream_.parent_ = this;
+        init_args(std::forward<Args>(args)...);
 
-    if (!defer_process_start_) execute_process();
-  }
+        // Setup the communication channels of the Popen class
+        stream_.setup_comm_channels();
 
-  ~Popen()
-  {
+        if (!defer_process_start_)
+            execute_process();
+    }
+
+    ~Popen() {
 #ifdef __USING_WINDOWS__
-    if (cleanup_future_.valid()) {
-      cleanup_future_.wait();
-    }
-    if (process_handle_) {
-      CloseHandle(process_handle_);
-    }
+        if (cleanup_future_.valid()) {
+            cleanup_future_.wait();
+        }
+        if (process_handle_) {
+            CloseHandle(process_handle_);
+        }
 #else
-    // Reap zombie to prevent resource leak
-    if (child_created_ && retcode_ == -1) {
-      int status;
-      waitpid(child_pid_, &status, WNOHANG);
-    }
+        // Reap zombie to prevent resource leak
+        if (child_created_ && retcode_ == -1) {
+            int status;
+            waitpid(child_pid_, &status, WNOHANG);
+        }
 #endif
-  }
-
-  void start_process() noexcept(false);
-
-  int pid() const noexcept { return child_pid_; }
-
-  int retcode() const noexcept { return retcode_; }
-
-  int timeout_ms() const noexcept { return timeout_ms_; }
-  bool check() const noexcept { return check_; }
-
-  int wait(int timeout_ms = -1) noexcept(false);
-
-  std::optional<int> poll() noexcept(false);
-
-  void send_signal(int sig);
-  void terminate();
-  void kill();
-
-  void set_out_buf_cap(size_t cap) { stream_.set_out_buf_cap(cap); }
-
-  void set_err_buf_cap(size_t cap) { stream_.set_err_buf_cap(cap); }
-
-  int send(const char* msg, size_t length)
-  { return stream_.send(msg, length); }
-
-  int send(const std::string& msg)
-  { return send(msg.c_str(), msg.size()); }
-
-  int send(const std::vector<char>& msg)
-  { return stream_.send(msg); }
-
-  std::pair<OutBuffer, ErrBuffer> communicate(const char* msg, size_t length, int timeout_ms = -1)
-  {
-    if (timeout_ms < 0) {
-      auto res = stream_.communicate(msg, length, timeout_ms);
-      retcode_ = wait();
-      return res;
     }
-    auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(timeout_ms);
-    auto res = stream_.communicate(msg, length, timeout_ms);
-    auto remaining = std::chrono::duration_cast<std::chrono::milliseconds>(
-        deadline - std::chrono::steady_clock::now()).count();
-    if (remaining < 0) remaining = 0;
-    try {
-      retcode_ = wait(static_cast<int>(remaining));
-    } catch (TimeoutExpired&) {
-      kill();
-      if (cleanup_future_.valid()) cleanup_future_.wait();
-      else wait();
-      throw;
+
+    void start_process() noexcept(false);
+
+    int pid() const noexcept { return child_pid_; }
+
+    int retcode() const noexcept { return retcode_; }
+
+    int timeout_ms() const noexcept { return timeout_ms_; }
+    bool check() const noexcept { return check_; }
+
+    int wait(int timeout_ms = -1) noexcept(false);
+
+    std::optional<int> poll() noexcept(false);
+
+    void send_signal(int sig);
+    void terminate();
+    void kill();
+
+    void set_out_buf_cap(size_t cap) { stream_.set_out_buf_cap(cap); }
+
+    void set_err_buf_cap(size_t cap) { stream_.set_err_buf_cap(cap); }
+
+    int send(const char *msg, size_t length) { return stream_.send(msg, length); }
+
+    int send(const std::string &msg) { return send(msg.c_str(), msg.size()); }
+
+    int send(const std::vector<char> &msg) { return stream_.send(msg); }
+
+    std::pair<OutBuffer, ErrBuffer> communicate(const char *msg, size_t length, int timeout_ms = -1) {
+        if (timeout_ms < 0) {
+            auto res = stream_.communicate(msg, length, timeout_ms);
+            retcode_ = wait();
+            return res;
+        }
+        auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(timeout_ms);
+        auto res = stream_.communicate(msg, length, timeout_ms);
+        auto remaining =
+            std::chrono::duration_cast<std::chrono::milliseconds>(deadline - std::chrono::steady_clock::now()).count();
+        if (remaining < 0)
+            remaining = 0;
+        try {
+            retcode_ = wait(static_cast<int>(remaining));
+        } catch (TimeoutExpired &) {
+            kill();
+            if (cleanup_future_.valid())
+                cleanup_future_.wait();
+            else
+                wait();
+            throw;
+        }
+        return res;
     }
-    return res;
-  }
 
-  std::pair<OutBuffer, ErrBuffer> communicate(const std::string& msg)
-  {
-    return communicate(msg.c_str(), msg.size());
-  }
+    std::pair<OutBuffer, ErrBuffer> communicate(const std::string &msg) { return communicate(msg.c_str(), msg.size()); }
 
-  std::pair<OutBuffer, ErrBuffer> communicate(const std::vector<char>& msg)
-  {
-    return communicate(msg.data(), msg.size());
-  }
+    std::pair<OutBuffer, ErrBuffer> communicate(const std::vector<char> &msg) { return communicate(msg.data(), msg.size()); }
 
-  std::pair<OutBuffer, ErrBuffer> communicate(int timeout_ms = -1)
-  {
-    return communicate(nullptr, 0, timeout_ms);
-  }
+    std::pair<OutBuffer, ErrBuffer> communicate(int timeout_ms = -1) { return communicate(nullptr, 0, timeout_ms); }
 
-  FILE* input()  { return stream_.input(); }
-  FILE* output() { return stream_.output();}
-  FILE* error()  { return stream_.error(); }
+    FILE *input() { return stream_.input(); }
+    FILE *output() { return stream_.output(); }
+    FILE *error() { return stream_.error(); }
 
-  /// Stream close APIs
-  void close_input()  { stream_.input_.reset();  }
-  void close_output() { stream_.output_.reset(); }
-  void close_error()  { stream_.error_.reset();  }
+    /// Stream close APIs
+    void close_input() { stream_.input_.reset(); }
+    void close_output() { stream_.output_.reset(); }
+    void close_error() { stream_.error_.reset(); }
 
-private:
-  template <typename F, typename... Args>
-  void init_args(F&& farg, Args&&... args);
-  void init_args();
-  void execute_process() noexcept(false);
+  private:
+    template <typename F, typename... Args> void init_args(F &&farg, Args &&...args);
+    void init_args();
+    void execute_process() noexcept(false);
 
-private:
-  detail::Streams stream_;
+  private:
+    detail::Streams stream_;
 
 #ifdef __USING_WINDOWS__
-  HANDLE process_handle_ = nullptr;
-  std::future<void> cleanup_future_;
-  std::wstring cmd_line_;
+    HANDLE process_handle_ = nullptr;
+    std::future<void> cleanup_future_;
+    std::wstring cmd_line_;
 #endif
 
-  bool defer_process_start_ = false;
-  bool close_fds_ = false;
-  bool has_preexec_fn_ = false;
-  bool shell_ = false;
-  bool session_leader_ = false;
+    bool defer_process_start_ = false;
+    bool close_fds_ = false;
+    bool has_preexec_fn_ = false;
+    bool shell_ = false;
+    bool session_leader_ = false;
 
-  std::string exe_name_;
-  platform_str_t cwd_;
-  env_map_t env_;
-  preexec_func preexec_fn_;
+    std::string exe_name_;
+    platform_str_t cwd_;
+    env_map_t env_;
+    preexec_func preexec_fn_;
 
-  // Command provided as sequence
-  std::vector<std::string> vargs_;
+    // Command provided as sequence
+    std::vector<std::string> vargs_;
 
-  bool child_created_ = false;
-  // Pid of the child process
-  int child_pid_ = -1;
+    bool child_created_ = false;
+    // Pid of the child process
+    int child_pid_ = -1;
 
-  int retcode_ = -1;
+    int retcode_ = -1;
 
-  // Flags for run() convenience function
-  bool check_ = false;
-  bool capture_output_ = false;
-  int timeout_ms_ = -1;
+    // Flags for run() convenience function
+    bool check_ = false;
+    bool capture_output_ = false;
+    int timeout_ms_ = -1;
 };
 
-inline void Popen::init_args() {
+inline void Popen::init_args() {}
+
+template <typename F, typename... Args> inline void Popen::init_args(F &&farg, Args &&...args) {
+    detail::ArgumentDeducer argd(this);
+    argd.set_option(std::forward<F>(farg));
+    init_args(std::forward<Args>(args)...);
 }
 
-template <typename F, typename... Args>
-inline void Popen::init_args(F&& farg, Args&&... args)
-{
-  detail::ArgumentDeducer argd(this);
-  argd.set_option(std::forward<F>(farg));
-  init_args(std::forward<Args>(args)...);
-}
-
-inline void Popen::start_process() noexcept(false)
-{
-  // The process was started/tried to be started
-  // in the constructor itself.
-  // For explicitly calling this API to start the
-  // process, 'defer_spawn' argument must be set to
-  // true in the constructor.
-  if (!defer_process_start_) {
-    assert (0);
-    return;
-  }
-  execute_process();
-}
-
-inline int Popen::wait(int timeout_ms) noexcept(false)
-{
-#ifdef __USING_WINDOWS__
-  if (!process_handle_) return retcode_;
-
-  DWORD win_timeout = (timeout_ms < 0) ? INFINITE : static_cast<DWORD>(timeout_ms);
-  int ret = WaitForSingleObject(process_handle_, win_timeout);
-
-  if (ret == WAIT_TIMEOUT) {
-    throw TimeoutExpired("wait() timed out", timeout_ms);
-  }
-
-  if (ret != WAIT_OBJECT_0) {
-    throw OSError("Unexpected return code from WaitForSingleObject", 0);
-  }
-
-  DWORD dretcode_;
-
-  if (FALSE == GetExitCodeProcess(process_handle_, &dretcode_))
-      throw OSError("Failed during call to GetExitCodeProcess", 0);
-
-  CloseHandle(process_handle_);
-  process_handle_ = nullptr;
-
-  retcode_ = (int)dretcode_;
-  return retcode_;
-#else
-  if (timeout_ms < 0) {
-    int ret, status;
-    std::tie(ret, status) = util::wait_for_child_exit(pid());
-    if (ret == -1) {
-      if (errno != ECHILD) throw OSError("waitpid failed", errno);
-      return 0;
+inline void Popen::start_process() noexcept(false) {
+    // The process was started/tried to be started
+    // in the constructor itself.
+    // For explicitly calling this API to start the
+    // process, 'defer_spawn' argument must be set to
+    // true in the constructor.
+    if (!defer_process_start_) {
+        assert(0);
+        return;
     }
-    if (WIFEXITED(status)) return WEXITSTATUS(status);
-    if (WIFSIGNALED(status)) return -WTERMSIG(status);
-    else return 255;
-    return 0;
-  }
+    execute_process();
+}
 
-  // Timed wait: poll with WNOHANG
-  auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(timeout_ms);
+inline int Popen::wait(int timeout_ms) noexcept(false) {
+#ifdef __USING_WINDOWS__
+    if (!process_handle_)
+        return retcode_;
 
-  while (true) {
+    DWORD win_timeout = (timeout_ms < 0) ? INFINITE : static_cast<DWORD>(timeout_ms);
+    int ret = WaitForSingleObject(process_handle_, win_timeout);
+
+    if (ret == WAIT_TIMEOUT) {
+        throw TimeoutExpired("wait() timed out", timeout_ms);
+    }
+
+    if (ret != WAIT_OBJECT_0) {
+        throw OSError("Unexpected return code from WaitForSingleObject", 0);
+    }
+
+    DWORD dretcode_;
+
+    if (FALSE == GetExitCodeProcess(process_handle_, &dretcode_))
+        throw OSError("Failed during call to GetExitCodeProcess", 0);
+
+    CloseHandle(process_handle_);
+    process_handle_ = nullptr;
+
+    retcode_ = (int)dretcode_;
+    return retcode_;
+#else
+    if (timeout_ms < 0) {
+        int ret, status;
+        std::tie(ret, status) = util::wait_for_child_exit(pid());
+        if (ret == -1) {
+            if (errno != ECHILD)
+                throw OSError("waitpid failed", errno);
+            return 0;
+        }
+        if (WIFEXITED(status))
+            return WEXITSTATUS(status);
+        if (WIFSIGNALED(status))
+            return -WTERMSIG(status);
+        else
+            return 255;
+        return 0;
+    }
+
+    // Timed wait: poll with WNOHANG
+    auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(timeout_ms);
+
+    while (true) {
+        int status;
+        int ret = waitpid(child_pid_, &status, WNOHANG);
+
+        if (ret == child_pid_) {
+            if (WIFEXITED(status)) {
+                retcode_ = WEXITSTATUS(status);
+            } else if (WIFSIGNALED(status)) {
+                retcode_ = -WTERMSIG(status);
+            } else {
+                retcode_ = 255;
+            }
+            return retcode_;
+        }
+
+        if (ret == -1) {
+            if (errno == ECHILD) {
+                retcode_ = 0;
+                return 0;
+            }
+            throw OSError("waitpid failed", errno);
+        }
+
+        if (std::chrono::steady_clock::now() >= deadline) {
+            throw TimeoutExpired("wait() timed out", timeout_ms);
+        }
+
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+#endif
+}
+
+inline std::optional<int> Popen::poll() noexcept(false) {
+#ifdef __USING_WINDOWS__
+    if (!process_handle_)
+        return retcode_;
+
+    int ret = WaitForSingleObject(process_handle_, 0);
+    if (ret != WAIT_OBJECT_0)
+        return std::nullopt;
+
+    DWORD dretcode_;
+    if (FALSE == GetExitCodeProcess(process_handle_, &dretcode_))
+        throw OSError("GetExitCodeProcess", 0);
+
+    retcode_ = (int)dretcode_;
+
+    return retcode_;
+#else
+    if (!child_created_)
+        return std::nullopt;
+
     int status;
+
+    // Returns zero if child is still running
     int ret = waitpid(child_pid_, &status, WNOHANG);
+    if (ret == 0)
+        return std::nullopt;
 
     if (ret == child_pid_) {
-      if (WIFEXITED(status)) {
-        retcode_ = WEXITSTATUS(status);
-      } else if (WIFSIGNALED(status)) {
-        retcode_ = -WTERMSIG(status);
-      } else {
-        retcode_ = 255;
-      }
-      return retcode_;
+        if (WIFSIGNALED(status)) {
+            retcode_ = -WTERMSIG(status);
+        } else if (WIFEXITED(status)) {
+            retcode_ = WEXITSTATUS(status);
+        } else {
+            retcode_ = 255;
+        }
+        return retcode_;
     }
 
     if (ret == -1) {
-      if (errno == ECHILD) {
-        retcode_ = 0;
-        return 0;
-      }
-      throw OSError("waitpid failed", errno);
-    }
-
-    if (std::chrono::steady_clock::now() >= deadline) {
-      throw TimeoutExpired("wait() timed out", timeout_ms);
-    }
-
-    std::this_thread::sleep_for(std::chrono::milliseconds(10));
-  }
-#endif
-}
-
-inline std::optional<int> Popen::poll() noexcept(false)
-{
-#ifdef __USING_WINDOWS__
-  if (!process_handle_) return retcode_;
-
-  int ret = WaitForSingleObject(process_handle_, 0);
-  if (ret != WAIT_OBJECT_0) return std::nullopt;
-
-  DWORD dretcode_;
-  if (FALSE == GetExitCodeProcess(process_handle_, &dretcode_))
-      throw OSError("GetExitCodeProcess", 0);
-
-  retcode_ = (int)dretcode_;
-
-  return retcode_;
-#else
-  if (!child_created_) return std::nullopt;
-
-  int status;
-
-  // Returns zero if child is still running
-  int ret = waitpid(child_pid_, &status, WNOHANG);
-  if (ret == 0) return std::nullopt;
-
-  if (ret == child_pid_) {
-    if (WIFSIGNALED(status)) {
-      retcode_ = -WTERMSIG(status);
-    } else if (WIFEXITED(status)) {
-      retcode_ = WEXITSTATUS(status);
+        // From subprocess.py
+        // This happens if SIGCHLD is set to be ignored
+        // or waiting for child process has otherwise been disabled
+        // for our process. This child is dead, we cannot get the
+        // status.
+        if (errno == ECHILD)
+            retcode_ = 0;
+        else
+            throw OSError("waitpid failed", errno);
     } else {
-      retcode_ = 255;
+        retcode_ = ret;
     }
+
     return retcode_;
-  }
-
-  if (ret == -1) {
-    // From subprocess.py
-    // This happens if SIGCHLD is set to be ignored
-    // or waiting for child process has otherwise been disabled
-    // for our process. This child is dead, we cannot get the
-    // status.
-    if (errno == ECHILD) retcode_ = 0;
-    else throw OSError("waitpid failed", errno);
-  } else {
-    retcode_ = ret;
-  }
-
-  return retcode_;
 #endif
 }
 
-inline void Popen::send_signal(int sig)
-{
+inline void Popen::send_signal(int sig) {
 #ifdef __USING_WINDOWS__
-  if (!TerminateProcess(this->process_handle_, (UINT)sig)) {
-    throw OSError("TerminateProcess", 0);
-  }
+    if (!TerminateProcess(this->process_handle_, (UINT)sig)) {
+        throw OSError("TerminateProcess", 0);
+    }
 #else
-  if (session_leader_) killpg(child_pid_, sig);
-  else ::kill(child_pid_, sig);
+    if (session_leader_)
+        killpg(child_pid_, sig);
+    else
+        ::kill(child_pid_, sig);
 #endif
 }
 
-inline void Popen::terminate()
-{
+inline void Popen::terminate() {
 #ifdef __USING_WINDOWS__
-  if (!TerminateProcess(this->process_handle_, 1)) {
-    throw OSError("TerminateProcess", 0);
-  }
+    if (!TerminateProcess(this->process_handle_, 1)) {
+        throw OSError("TerminateProcess", 0);
+    }
 #else
-  send_signal(SIGTERM);
+    send_signal(SIGTERM);
 #endif
 }
 
-inline void Popen::kill()
-{
+inline void Popen::kill() {
 #ifdef __USING_WINDOWS__
-  if (!TerminateProcess(this->process_handle_, 1)) {
-    throw OSError("TerminateProcess", 0);
-  }
+    if (!TerminateProcess(this->process_handle_, 1)) {
+        throw OSError("TerminateProcess", 0);
+    }
 #else
-  send_signal(SIGKILL);
+    send_signal(SIGKILL);
 #endif
 }
 
-
-inline void Popen::execute_process() noexcept(false)
-{
+inline void Popen::execute_process() noexcept(false) {
 #ifdef __USING_WINDOWS__
-  if (this->shell_) {
-    throw OSError("shell not currently supported on windows", 0);
-  }
+    if (this->shell_) {
+        throw OSError("shell not currently supported on windows", 0);
+    }
 
-  void* environment_string_table_ptr = nullptr;
-  env_vector_t environment_string_vector;
-  if(this->env_.size()){
-	  environment_string_vector = util::CreateUpdatedWindowsEnvironmentVector(env_);
-	  environment_string_table_ptr = (void*)environment_string_vector.data();
-  }
+    void *environment_string_table_ptr = nullptr;
+    env_vector_t environment_string_vector;
+    if (this->env_.size()) {
+        environment_string_vector = util::CreateUpdatedWindowsEnvironmentVector(env_);
+        environment_string_table_ptr = (void *)environment_string_vector.data();
+    }
 
-  if (exe_name_.length()) {
-    this->vargs_.insert(this->vargs_.begin(), this->exe_name_);
-  }
-  this->exe_name_ = vargs_[0];
+    if (exe_name_.length()) {
+        this->vargs_.insert(this->vargs_.begin(), this->exe_name_);
+    }
+    this->exe_name_ = vargs_[0];
 
-  std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
-  std::wstring argument;
-  std::wstring command_line;
-  bool first_arg = true;
+    std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
+    std::wstring argument;
+    std::wstring command_line;
+    bool first_arg = true;
 
-  for (auto arg : this->vargs_) {
-    if (!first_arg) {
-      command_line += L" ";
+    for (auto arg : this->vargs_) {
+        if (!first_arg) {
+            command_line += L" ";
+        } else {
+            first_arg = false;
+        }
+        argument = converter.from_bytes(arg);
+        util::quote_argument(argument, command_line, false);
+    }
+
+    cmd_line_ = command_line;
+    SP_PROCESS_INFORMATION piProcInfo;
+    SP_STARTUPINFOW siStartInfo;
+    BOOL bSuccess = FALSE;
+    DWORD creation_flags = CREATE_UNICODE_ENVIRONMENT | CREATE_NO_WINDOW;
+
+    // Set up members of the PROCESS_INFORMATION structure.
+    ZeroMemory(&piProcInfo, sizeof(SP_PROCESS_INFORMATION));
+
+    // Set up members of the STARTUPINFOW structure.
+    // This structure specifies the STDIN and STDOUT handles for redirection.
+
+    ZeroMemory(&siStartInfo, sizeof(SP_STARTUPINFOW));
+    siStartInfo.cb = sizeof(SP_STARTUPINFOW);
+
+    siStartInfo.hStdError = this->stream_.g_hChildStd_ERR_Wr;
+    siStartInfo.hStdOutput = this->stream_.g_hChildStd_OUT_Wr;
+    siStartInfo.hStdInput = this->stream_.g_hChildStd_IN_Rd;
+
+    // Handle DEVNULL: replace pipe handles with NUL handles
+    HANDLE hNulIn = INVALID_HANDLE_VALUE;
+    HANDLE hNulOut = INVALID_HANDLE_VALUE;
+    if (this->stream_.input_devnull_) {
+        hNulIn = CreateFileW(L"NUL",
+                             GENERIC_READ,
+                             FILE_SHARE_READ | FILE_SHARE_WRITE,
+                             NULL,
+                             OPEN_EXISTING,
+                             FILE_ATTRIBUTE_NORMAL,
+                             NULL);
+        if (hNulIn == INVALID_HANDLE_VALUE) {
+            throw OSError("CreateFileW(NUL) for stdin", 0);
+        }
+        siStartInfo.hStdInput = hNulIn;
+    }
+    if (this->stream_.output_devnull_) {
+        hNulOut = CreateFileW(L"NUL",
+                              GENERIC_WRITE,
+                              FILE_SHARE_READ | FILE_SHARE_WRITE,
+                              NULL,
+                              OPEN_EXISTING,
+                              FILE_ATTRIBUTE_NORMAL,
+                              NULL);
+        if (hNulOut == INVALID_HANDLE_VALUE) {
+            throw OSError("CreateFileW(NUL) for stdout", 0);
+        }
+        siStartInfo.hStdOutput = hNulOut;
+    }
+    if (this->stream_.error_devnull_) {
+        // Use hNulOut if already opened for output, otherwise open a new one
+        if (hNulOut != INVALID_HANDLE_VALUE) {
+            siStartInfo.hStdError = hNulOut;
+        } else {
+            hNulOut = CreateFileW(L"NUL",
+                                  GENERIC_WRITE,
+                                  FILE_SHARE_READ | FILE_SHARE_WRITE,
+                                  NULL,
+                                  OPEN_EXISTING,
+                                  FILE_ATTRIBUTE_NORMAL,
+                                  NULL);
+            if (hNulOut == INVALID_HANDLE_VALUE) {
+                throw OSError("CreateFileW(NUL) for stderr", 0);
+            }
+            siStartInfo.hStdError = hNulOut;
+        }
+    }
+
+    siStartInfo.dwFlags |= STARTF_USESTDHANDLES;
+
+    const wchar_t *cwd_arg = this->cwd_.empty() ? NULL : cwd_.c_str();
+
+    // Create the child process.
+    bSuccess = CreateProcessW(NULL,
+                              (wchar_t *)cmd_line_.c_str(),                          // command line
+                              NULL,                                                  // process security attributes
+                              NULL,                                                  // primary thread security attributes
+                              TRUE,                                                  // handles are inherited
+                              creation_flags,                                        // creation flags
+                              environment_string_table_ptr,                          // use provided environment
+                              cwd_arg,                                               // use provided current directory
+                              reinterpret_cast<LPSTARTUPINFOW>(&siStartInfo),        // STARTUPINFOW pointer
+                              reinterpret_cast<LPPROCESS_INFORMATION>(&piProcInfo)); // receives PROCESS_INFORMATION
+
+    // If an error occurs, exit the application.
+    if (!bSuccess) {
+        DWORD errorMessageID = ::GetLastError();
+        throw CalledProcessError("CreateProcess failed: " + util::get_last_error(errorMessageID), errorMessageID);
+    }
+
+    CloseHandle(piProcInfo.hThread);
+
+    /*
+      TODO: use common apis to close linux handles
+    */
+
+    this->process_handle_ = piProcInfo.hProcess;
+
+    // Close DEVNULL handles (child has inherited them)
+    if (hNulIn != INVALID_HANDLE_VALUE)
+        CloseHandle(hNulIn);
+    if (hNulOut != INVALID_HANDLE_VALUE)
+        CloseHandle(hNulOut);
+
+    {
+        HANDLE hProcess = this->process_handle_;
+        HANDLE hErrWr = this->stream_.g_hChildStd_ERR_Wr;
+        HANDLE hOutWr = this->stream_.g_hChildStd_OUT_Wr;
+        HANDLE hInRd = this->stream_.g_hChildStd_IN_Rd;
+
+        this->cleanup_future_ = std::async(std::launch::async, [hProcess, hErrWr, hOutWr, hInRd] {
+            WaitForSingleObject(hProcess, INFINITE);
+
+            CloseHandle(hErrWr);
+            CloseHandle(hOutWr);
+            CloseHandle(hInRd);
+        });
+    }
+
+#else
+
+    int err_rd_pipe, err_wr_pipe;
+    std::tie(err_rd_pipe, err_wr_pipe) = util::pipe_cloexec();
+
+    if (shell_) {
+        auto new_cmd = util::join(vargs_);
+        vargs_.clear();
+        vargs_.insert(vargs_.begin(), { "/bin/sh", "-c" });
+        vargs_.push_back(new_cmd);
+    }
+
+    if (exe_name_.length()) {
+        vargs_.insert(vargs_.begin(), exe_name_);
+    }
+    exe_name_ = vargs_[0];
+
+    detail::Child chld(this, err_wr_pipe);
+
+    child_pid_ = fork();
+
+    if (child_pid_ < 0) {
+        subprocess_close(err_rd_pipe);
+        subprocess_close(err_wr_pipe);
+        throw OSError("fork failed", errno);
+    }
+
+    child_created_ = true;
+
+    if (child_pid_ == 0) {
+        // Close descriptors belonging to parent
+        stream_.close_parent_fds();
+
+        // Close the read end of the error pipe
+        subprocess_close(err_rd_pipe);
+
+        chld.execute_child();
     } else {
-      first_arg = false;
+        subprocess_close(err_wr_pipe); // close child side of pipe, else get stuck in read below
+
+        stream_.close_child_fds();
+
+        try {
+            char err_buf[SP_MAX_ERR_BUF_SIZ] = {
+                0,
+            };
+
+            FILE *err_fp = fdopen(err_rd_pipe, "r");
+            if (!err_fp) {
+                subprocess_close(err_rd_pipe);
+                throw OSError("fdopen failed", errno);
+            }
+            int read_bytes = util::read_atmost_n(err_fp, err_buf, SP_MAX_ERR_BUF_SIZ);
+            fclose(err_fp);
+
+            if (read_bytes || strlen(err_buf)) {
+                // Call waitpid to reap the child process
+                // waitpid suspends the calling process until the
+                // child terminates.
+                int retcode = wait();
+
+                // Throw whatever information we have about child failure
+                throw CalledProcessError(err_buf, retcode);
+            }
+        } catch (std::exception &exp) {
+            stream_.cleanup_fds();
+            throw;
+        }
     }
-    argument = converter.from_bytes(arg);
-    util::quote_argument(argument, command_line, false);
-  }
-
-  cmd_line_ = command_line;
-  SP_PROCESS_INFORMATION piProcInfo;
-  SP_STARTUPINFOW siStartInfo;
-  BOOL bSuccess = FALSE;
-  DWORD creation_flags = CREATE_UNICODE_ENVIRONMENT | CREATE_NO_WINDOW;
-
-  // Set up members of the PROCESS_INFORMATION structure.
-  ZeroMemory(&piProcInfo, sizeof(SP_PROCESS_INFORMATION));
-
-  // Set up members of the STARTUPINFOW structure.
-  // This structure specifies the STDIN and STDOUT handles for redirection.
-
-  ZeroMemory(&siStartInfo, sizeof(SP_STARTUPINFOW));
-  siStartInfo.cb = sizeof(SP_STARTUPINFOW);
-
-  siStartInfo.hStdError = this->stream_.g_hChildStd_ERR_Wr;
-  siStartInfo.hStdOutput = this->stream_.g_hChildStd_OUT_Wr;
-  siStartInfo.hStdInput = this->stream_.g_hChildStd_IN_Rd;
-
-  // Handle DEVNULL: replace pipe handles with NUL handles
-  HANDLE hNulIn = INVALID_HANDLE_VALUE;
-  HANDLE hNulOut = INVALID_HANDLE_VALUE;
-  if (this->stream_.input_devnull_) {
-    hNulIn = CreateFileW(L"NUL", GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE,
-                         NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
-    if (hNulIn == INVALID_HANDLE_VALUE) {
-      throw OSError("CreateFileW(NUL) for stdin", 0);
-    }
-    siStartInfo.hStdInput = hNulIn;
-  }
-  if (this->stream_.output_devnull_) {
-    hNulOut = CreateFileW(L"NUL", GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE,
-                          NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
-    if (hNulOut == INVALID_HANDLE_VALUE) {
-      throw OSError("CreateFileW(NUL) for stdout", 0);
-    }
-    siStartInfo.hStdOutput = hNulOut;
-  }
-  if (this->stream_.error_devnull_) {
-    // Use hNulOut if already opened for output, otherwise open a new one
-    if (hNulOut != INVALID_HANDLE_VALUE) {
-      siStartInfo.hStdError = hNulOut;
-    } else {
-      hNulOut = CreateFileW(L"NUL", GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE,
-                            NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
-      if (hNulOut == INVALID_HANDLE_VALUE) {
-        throw OSError("CreateFileW(NUL) for stderr", 0);
-      }
-      siStartInfo.hStdError = hNulOut;
-    }
-  }
-
-  siStartInfo.dwFlags |= STARTF_USESTDHANDLES;
-
-  const wchar_t *cwd_arg = this->cwd_.empty() ? NULL : cwd_.c_str();
-
-  // Create the child process.
-  bSuccess = CreateProcessW(NULL,
-                            (wchar_t*)cmd_line_.c_str(),    // command line
-                            NULL,         // process security attributes
-                            NULL,         // primary thread security attributes
-                            TRUE,         // handles are inherited
-                            creation_flags, // creation flags
-                            environment_string_table_ptr,  // use provided environment
-                            cwd_arg,      // use provided current directory
-                            reinterpret_cast<LPSTARTUPINFOW>(&siStartInfo), // STARTUPINFOW pointer
-                            reinterpret_cast<LPPROCESS_INFORMATION>(&piProcInfo)); // receives PROCESS_INFORMATION
-
-  // If an error occurs, exit the application.
-  if (!bSuccess) {
-    DWORD errorMessageID = ::GetLastError();
-    throw CalledProcessError("CreateProcess failed: " + util::get_last_error(errorMessageID), errorMessageID);
-  }
-
-  CloseHandle(piProcInfo.hThread);
-
-  /*
-    TODO: use common apis to close linux handles
-  */
-
-  this->process_handle_ = piProcInfo.hProcess;
-
-  // Close DEVNULL handles (child has inherited them)
-  if (hNulIn != INVALID_HANDLE_VALUE) CloseHandle(hNulIn);
-  if (hNulOut != INVALID_HANDLE_VALUE) CloseHandle(hNulOut);
-
-  {
-    HANDLE hProcess = this->process_handle_;
-    HANDLE hErrWr = this->stream_.g_hChildStd_ERR_Wr;
-    HANDLE hOutWr = this->stream_.g_hChildStd_OUT_Wr;
-    HANDLE hInRd = this->stream_.g_hChildStd_IN_Rd;
-
-    this->cleanup_future_ = std::async(std::launch::async,
-        [hProcess, hErrWr, hOutWr, hInRd] {
-      WaitForSingleObject(hProcess, INFINITE);
-
-      CloseHandle(hErrWr);
-      CloseHandle(hOutWr);
-      CloseHandle(hInRd);
-    });
-  }
-
-
-#else
-
-  int err_rd_pipe, err_wr_pipe;
-  std::tie(err_rd_pipe, err_wr_pipe) = util::pipe_cloexec();
-
-  if (shell_) {
-    auto new_cmd = util::join(vargs_);
-    vargs_.clear();
-    vargs_.insert(vargs_.begin(), {"/bin/sh", "-c"});
-    vargs_.push_back(new_cmd);
-  }
-
-  if (exe_name_.length()) {
-    vargs_.insert(vargs_.begin(), exe_name_);
-  }
-  exe_name_ = vargs_[0];
-
-  detail::Child chld(this, err_wr_pipe);
-
-  child_pid_ = fork();
-
-  if (child_pid_ < 0) {
-    subprocess_close(err_rd_pipe);
-    subprocess_close(err_wr_pipe);
-    throw OSError("fork failed", errno);
-  }
-
-  child_created_ = true;
-
-  if (child_pid_ == 0)
-  {
-    // Close descriptors belonging to parent
-    stream_.close_parent_fds();
-
-    //Close the read end of the error pipe
-    subprocess_close(err_rd_pipe);
-
-    chld.execute_child();
-  }
-  else
-  {
-    subprocess_close(err_wr_pipe);// close child side of pipe, else get stuck in read below
-
-    stream_.close_child_fds();
-
-    try {
-      char err_buf[SP_MAX_ERR_BUF_SIZ] = {0,};
-
-      FILE* err_fp = fdopen(err_rd_pipe, "r");
-      if (!err_fp) {
-          subprocess_close(err_rd_pipe);
-          throw OSError("fdopen failed", errno);
-      }
-      int read_bytes = util::read_atmost_n(err_fp, err_buf, SP_MAX_ERR_BUF_SIZ);
-      fclose(err_fp);
-
-      if (read_bytes || strlen(err_buf)) {
-        // Call waitpid to reap the child process
-        // waitpid suspends the calling process until the
-        // child terminates.
-        int retcode = wait();
-
-        // Throw whatever information we have about child failure
-        throw CalledProcessError(err_buf, retcode);
-      }
-    } catch (std::exception& exp) {
-      stream_.cleanup_fds();
-      throw;
-    }
-
-  }
 #endif
 }
 
 namespace detail {
 
-  inline void ArgumentDeducer::set_option(executable&& exe) {
-    popen_->exe_name_ = std::move(exe.arg_value);
-  }
+inline void ArgumentDeducer::set_option(executable &&exe) { popen_->exe_name_ = std::move(exe.arg_value); }
 
-  inline void ArgumentDeducer::set_option(cwd&& cwdir) {
-    popen_->cwd_ = std::move(cwdir.cwd_);
-  }
+inline void ArgumentDeducer::set_option(cwd &&cwdir) { popen_->cwd_ = std::move(cwdir.cwd_); }
 
-  inline void ArgumentDeducer::set_option(bufsize&& bsiz) {
-    popen_->stream_.bufsiz_ = bsiz.bufsiz;
-  }
+inline void ArgumentDeducer::set_option(bufsize &&bsiz) { popen_->stream_.bufsiz_ = bsiz.bufsiz; }
 
-  inline void ArgumentDeducer::set_option(environment&& env) {
-    popen_->env_ = std::move(env.env_);
-  }
+inline void ArgumentDeducer::set_option(environment &&env) { popen_->env_ = std::move(env.env_); }
 
-  inline void ArgumentDeducer::set_option(defer_spawn&& defer) {
-    popen_->defer_process_start_ = defer.defer;
-  }
+inline void ArgumentDeducer::set_option(defer_spawn &&defer) { popen_->defer_process_start_ = defer.defer; }
 
-  inline void ArgumentDeducer::set_option(shell&& sh) {
-    popen_->shell_ = sh.shell_;
-  }
+inline void ArgumentDeducer::set_option(shell &&sh) { popen_->shell_ = sh.shell_; }
 
-  inline void ArgumentDeducer::set_option(session_leader&& sleader) {
-    popen_->session_leader_ = sleader.leader_;
-  }
+inline void ArgumentDeducer::set_option(session_leader &&sleader) { popen_->session_leader_ = sleader.leader_; }
 
-  inline void ArgumentDeducer::set_option(check_arg&& c) {
-    popen_->check_ = c.val;
-  }
+inline void ArgumentDeducer::set_option(check_arg &&c) { popen_->check_ = c.val; }
 
-  inline void ArgumentDeducer::set_option(capture_output_arg&& co) {
-    popen_->capture_output_ = co.val;
-  }
+inline void ArgumentDeducer::set_option(capture_output_arg &&co) { popen_->capture_output_ = co.val; }
 
-  inline void ArgumentDeducer::set_option(timeout_arg&& t) {
-    popen_->timeout_ms_ = t.ms;
-  }
+inline void ArgumentDeducer::set_option(timeout_arg &&t) { popen_->timeout_ms_ = t.ms; }
 
-  inline void ArgumentDeducer::set_option(input&& inp) {
-    if (inp.devnull_) popen_->stream_.input_devnull_ = true;
-    if (inp.rd_ch_ != -1) popen_->stream_.read_from_parent_ = inp.rd_ch_;
-    if (inp.wr_ch_ != -1) popen_->stream_.write_to_child_ = inp.wr_ch_;
-  }
+inline void ArgumentDeducer::set_option(input &&inp) {
+    if (inp.devnull_)
+        popen_->stream_.input_devnull_ = true;
+    if (inp.rd_ch_ != -1)
+        popen_->stream_.read_from_parent_ = inp.rd_ch_;
+    if (inp.wr_ch_ != -1)
+        popen_->stream_.write_to_child_ = inp.wr_ch_;
+}
 
-  inline void ArgumentDeducer::set_option(output&& out) {
-    if (out.devnull_) popen_->stream_.output_devnull_ = true;
-    if (out.wr_ch_ != -1) popen_->stream_.write_to_parent_ = out.wr_ch_;
-    if (out.rd_ch_ != -1) popen_->stream_.read_from_child_ = out.rd_ch_;
-  }
+inline void ArgumentDeducer::set_option(output &&out) {
+    if (out.devnull_)
+        popen_->stream_.output_devnull_ = true;
+    if (out.wr_ch_ != -1)
+        popen_->stream_.write_to_parent_ = out.wr_ch_;
+    if (out.rd_ch_ != -1)
+        popen_->stream_.read_from_child_ = out.rd_ch_;
+}
 
-  inline void ArgumentDeducer::set_option(error&& err) {
-    if (err.devnull_) popen_->stream_.error_devnull_ = true;
+inline void ArgumentDeducer::set_option(error &&err) {
+    if (err.devnull_)
+        popen_->stream_.error_devnull_ = true;
     if (err.deferred_) {
-      if (popen_->stream_.write_to_parent_ != -1) {
-        popen_->stream_.err_write_ = popen_->stream_.write_to_parent_;
-      } else {
-        throw std::runtime_error("Set output before redirecting error to output");
-      }
+        if (popen_->stream_.write_to_parent_ != -1) {
+            popen_->stream_.err_write_ = popen_->stream_.write_to_parent_;
+        } else {
+            throw std::runtime_error("Set output before redirecting error to output");
+        }
     }
-    if (err.wr_ch_ != -1) popen_->stream_.err_write_ = err.wr_ch_;
-    if (err.rd_ch_ != -1) popen_->stream_.err_read_ = err.rd_ch_;
-  }
+    if (err.wr_ch_ != -1)
+        popen_->stream_.err_write_ = err.wr_ch_;
+    if (err.rd_ch_ != -1)
+        popen_->stream_.err_read_ = err.rd_ch_;
+}
 
-  inline void ArgumentDeducer::set_option(close_fds&& cfds) {
-    popen_->close_fds_ = cfds.close_all;
-  }
+inline void ArgumentDeducer::set_option(close_fds &&cfds) { popen_->close_fds_ = cfds.close_all; }
 
-  inline void ArgumentDeducer::set_option(preexec_func&& prefunc) {
+inline void ArgumentDeducer::set_option(preexec_func &&prefunc) {
     popen_->preexec_fn_ = std::move(prefunc);
     popen_->has_preexec_fn_ = true;
-  }
-
+}
 
 #ifndef __USING_WINDOWS__
-  inline void Child::populate_execve_args() {
+inline void Child::populate_execve_args() {
     cargv_.clear();
     cargv_.reserve(parent_->vargs_.size() + 1);
-    for (auto& arg : parent_->vargs_) {
-      cargv_.push_back(&arg[0]);
+    for (auto &arg : parent_->vargs_) {
+        cargv_.push_back(&arg[0]);
     }
     cargv_.push_back(nullptr);
 
@@ -2174,364 +2088,358 @@ namespace detail {
 
     extern char **environ;
     for (char **penv = environ; *penv; ++penv) {
-      char *env = *penv;
-      char *env_eq = strchr(env, '=');
-      if (!env_eq) {
-        cenvp_.push_back(env);
-        continue;
-      }
-      std::string env_name(env, env_eq - env);
-      if (parent_->env_.find(env_name) == parent_->env_.end()) {
-        cenvp_.push_back(env);
-        continue;
-      }
+        char *env = *penv;
+        char *env_eq = strchr(env, '=');
+        if (!env_eq) {
+            cenvp_.push_back(env);
+            continue;
+        }
+        std::string env_name(env, env_eq - env);
+        if (parent_->env_.find(env_name) == parent_->env_.end()) {
+            cenvp_.push_back(env);
+            continue;
+        }
     }
 
     env_storage_.reserve(parent_->env_.size());
     for (const auto &pair : parent_->env_) {
-      std::string entry;
-      entry.reserve(pair.first.length() + 1 + pair.second.length());
-      entry += pair.first;
-      entry += '=';
-      entry += pair.second;
-      env_storage_.emplace_back(std::move(entry));
+        std::string entry;
+        entry.reserve(pair.first.length() + 1 + pair.second.length());
+        entry += pair.first;
+        entry += '=';
+        entry += pair.second;
+        env_storage_.emplace_back(std::move(entry));
     }
 
     for (const auto &env : env_storage_) {
-      cenvp_.push_back(const_cast<char*>(env.c_str()));
+        cenvp_.push_back(const_cast<char *>(env.c_str()));
     }
 
     cenvp_.push_back(nullptr);
-  }
+}
 
-  [[noreturn]] inline void Child::exit_with_error(const char *msg, int err) {
+[[noreturn]] inline void Child::exit_with_error(const char *msg, int err) {
     util::write_n(err_wr_pipe_, msg, strlen(msg));
     util::write_n(err_wr_pipe_, ": 0x", 4);
 
-    auto nibble_to_hex = [](unsigned char nibble) -> char {
-      return "0123456789abcdef"[nibble];
-    };
+    auto nibble_to_hex = [](unsigned char nibble) -> char { return "0123456789abcdef"[nibble]; };
 
     char err_str[sizeof(err) * 2];
     char *p = err_str;
     for (size_t i = 0; i < sizeof(err); ++i) {
-      unsigned char byte = (err >> (8 * (sizeof(err) - 1 - i))) & 0xFF;
-      *p++ = nibble_to_hex((byte >> 4) & 0xF);
-      *p++ = nibble_to_hex((byte >> 0) & 0xF);
+        unsigned char byte = (err >> (8 * (sizeof(err) - 1 - i))) & 0xFF;
+        *p++ = nibble_to_hex((byte >> 4) & 0xF);
+        *p++ = nibble_to_hex((byte >> 0) & 0xF);
     }
     util::write_n(err_wr_pipe_, err_str, p - err_str);
     _exit(EXIT_FAILURE);
-  }
+}
 
-  [[noreturn]] inline void Child::execute_child() {
+[[noreturn]] inline void Child::execute_child() {
     int sys_ret = -1;
-    auto& stream = parent_->stream_;
+    auto &stream = parent_->stream_;
 
     if (stream.write_to_parent_ == 0)
-      stream.write_to_parent_ = dup(stream.write_to_parent_);
+        stream.write_to_parent_ = dup(stream.write_to_parent_);
 
     if (stream.err_write_ == 0 || stream.err_write_ == 1)
-      stream.err_write_ = dup(stream.err_write_);
+        stream.err_write_ = dup(stream.err_write_);
 
     // Handle DEVNULL: open /dev/null before dup2
     if (stream.input_devnull_) {
-      int fd = open("/dev/null", O_RDONLY);
-      if (fd == -1) exit_with_error("open /dev/null failed", errno);
-      stream.read_from_parent_ = fd;
+        int fd = open("/dev/null", O_RDONLY);
+        if (fd == -1)
+            exit_with_error("open /dev/null failed", errno);
+        stream.read_from_parent_ = fd;
     }
     if (stream.output_devnull_) {
-      int fd = open("/dev/null", O_WRONLY);
-      if (fd == -1) exit_with_error("open /dev/null failed", errno);
-      stream.write_to_parent_ = fd;
+        int fd = open("/dev/null", O_WRONLY);
+        if (fd == -1)
+            exit_with_error("open /dev/null failed", errno);
+        stream.write_to_parent_ = fd;
     }
     if (stream.error_devnull_) {
-      int fd = open("/dev/null", O_WRONLY);
-      if (fd == -1) exit_with_error("open /dev/null failed", errno);
-      stream.err_write_ = fd;
+        int fd = open("/dev/null", O_WRONLY);
+        if (fd == -1)
+            exit_with_error("open /dev/null failed", errno);
+        stream.err_write_ = fd;
     }
 
     auto _dup2_ = [&](int fd, int to_fd) {
-      if (fd == to_fd) {
-        util::set_clo_on_exec(fd, false);
-      } else if (fd != -1) {
-        int res = dup2(fd, to_fd);
-        if (res == -1) exit_with_error("dup2 failed", errno);
-      }
+        if (fd == to_fd) {
+            util::set_clo_on_exec(fd, false);
+        } else if (fd != -1) {
+            int res = dup2(fd, to_fd);
+            if (res == -1)
+                exit_with_error("dup2 failed", errno);
+        }
     };
 
     _dup2_(stream.read_from_parent_, 0);
-    _dup2_(stream.write_to_parent_,  1);
-    _dup2_(stream.err_write_,        2);
+    _dup2_(stream.write_to_parent_, 1);
+    _dup2_(stream.err_write_, 2);
 
     if (stream.read_from_parent_ != -1 && stream.read_from_parent_ > 2)
-      subprocess_close(stream.read_from_parent_);
+        subprocess_close(stream.read_from_parent_);
 
     if (stream.write_to_parent_ != -1 && stream.write_to_parent_ > 2)
-      subprocess_close(stream.write_to_parent_);
+        subprocess_close(stream.write_to_parent_);
 
     if (stream.err_write_ != -1 && stream.err_write_ > 2)
-      subprocess_close(stream.err_write_);
+        subprocess_close(stream.err_write_);
 
     if (parent_->close_fds_) {
-      int max_fd = sysconf(_SC_OPEN_MAX);
-      if (max_fd == -1) exit_with_error("sysconf failed", errno);
+        int max_fd = sysconf(_SC_OPEN_MAX);
+        if (max_fd == -1)
+            exit_with_error("sysconf failed", errno);
 
-      for (int i = 3; i < max_fd; i++) {
-        if (i == err_wr_pipe_) continue;
-        subprocess_close(i);
-      }
+        for (int i = 3; i < max_fd; i++) {
+            if (i == err_wr_pipe_)
+                continue;
+            subprocess_close(i);
+        }
     }
 
     if (parent_->cwd_.length()) {
-      sys_ret = chdir(parent_->cwd_.c_str());
-      if (sys_ret == -1) exit_with_error("chdir failed", errno);
+        sys_ret = chdir(parent_->cwd_.c_str());
+        if (sys_ret == -1)
+            exit_with_error("chdir failed", errno);
     }
 
     if (parent_->has_preexec_fn_) {
-      parent_->preexec_fn_();
+        parent_->preexec_fn_();
     }
 
     if (parent_->session_leader_) {
-      sys_ret = setsid();
-      if (sys_ret == -1) exit_with_error("setsid failed", errno);
+        sys_ret = setsid();
+        if (sys_ret == -1)
+            exit_with_error("setsid failed", errno);
     }
 
     execvpe(parent_->exe_name_.c_str(), cargv_.data(), cenvp_.data());
 
     exit_with_error("execvpe failed", errno);
-  }
+}
 #endif // __USING_WINDOWS__
 
-
-  inline void Streams::setup_comm_channels()
-  {
+inline void Streams::setup_comm_channels() {
 #ifdef __USING_WINDOWS__
     if (input_devnull_) {
-      this->write_to_child_ = -1;
+        this->write_to_child_ = -1;
     } else {
-      util::configure_pipe(&this->g_hChildStd_IN_Rd, &this->g_hChildStd_IN_Wr, &this->g_hChildStd_IN_Wr);
-      this->input(util::file_from_handle(this->g_hChildStd_IN_Wr, "w"));
-      this->write_to_child_ = subprocess_fileno(this->input());
+        util::configure_pipe(&this->g_hChildStd_IN_Rd, &this->g_hChildStd_IN_Wr, &this->g_hChildStd_IN_Wr);
+        this->input(util::file_from_handle(this->g_hChildStd_IN_Wr, "w"));
+        this->write_to_child_ = subprocess_fileno(this->input());
     }
 
     if (output_devnull_) {
-      this->read_from_child_ = -1;
+        this->read_from_child_ = -1;
     } else {
-      util::configure_pipe(&this->g_hChildStd_OUT_Rd, &this->g_hChildStd_OUT_Wr, &this->g_hChildStd_OUT_Rd);
-      this->output(util::file_from_handle(this->g_hChildStd_OUT_Rd, "r"));
-      this->read_from_child_ = subprocess_fileno(this->output());
+        util::configure_pipe(&this->g_hChildStd_OUT_Rd, &this->g_hChildStd_OUT_Wr, &this->g_hChildStd_OUT_Rd);
+        this->output(util::file_from_handle(this->g_hChildStd_OUT_Rd, "r"));
+        this->read_from_child_ = subprocess_fileno(this->output());
     }
 
     if (error_devnull_) {
-      this->err_read_ = -1;
+        this->err_read_ = -1;
     } else {
-      util::configure_pipe(&this->g_hChildStd_ERR_Rd, &this->g_hChildStd_ERR_Wr, &this->g_hChildStd_ERR_Rd);
-      this->error(util::file_from_handle(this->g_hChildStd_ERR_Rd, "r"));
-      this->err_read_ = subprocess_fileno(this->error());
+        util::configure_pipe(&this->g_hChildStd_ERR_Rd, &this->g_hChildStd_ERR_Wr, &this->g_hChildStd_ERR_Rd);
+        this->error(util::file_from_handle(this->g_hChildStd_ERR_Rd, "r"));
+        this->err_read_ = subprocess_fileno(this->error());
     }
 #else
 
-    if (write_to_child_ != -1)  input(fdopen(write_to_child_, "wb"));
-    if (read_from_child_ != -1) output(fdopen(read_from_child_, "rb"));
-    if (err_read_ != -1)        error(fdopen(err_read_, "rb"));
+    if (write_to_child_ != -1)
+        input(fdopen(write_to_child_, "wb"));
+    if (read_from_child_ != -1)
+        output(fdopen(read_from_child_, "rb"));
+    if (err_read_ != -1)
+        error(fdopen(err_read_, "rb"));
 
-    auto handles = {input(), output(), error()};
+    auto handles = { input(), output(), error() };
 
-    for (auto& h : handles) {
-      if (h == nullptr) continue;
-      switch (bufsiz_) {
-      case 0:
-        setvbuf(h, nullptr, _IONBF, BUFSIZ);
-        break;
-      case 1:
-        setvbuf(h, nullptr, _IONBF, BUFSIZ);
-        break;
-      default:
-        setvbuf(h, nullptr, _IOFBF, bufsiz_);
-      };
+    for (auto &h : handles) {
+        if (h == nullptr)
+            continue;
+        switch (bufsiz_) {
+        case 0:
+            setvbuf(h, nullptr, _IONBF, BUFSIZ);
+            break;
+        case 1:
+            setvbuf(h, nullptr, _IONBF, BUFSIZ);
+            break;
+        default:
+            setvbuf(h, nullptr, _IOFBF, bufsiz_);
+        };
     }
-  #endif
-  }
+#endif
+}
 
-  inline int Communication::send(const char* msg, size_t length)
-  {
-    if (stream_->input() == nullptr) return -1;
+inline int Communication::send(const char *msg, size_t length) {
+    if (stream_->input() == nullptr)
+        return -1;
     return std::fwrite(msg, sizeof(char), length, stream_->input());
-  }
+}
 
-  inline int Communication::send(const std::vector<char>& msg)
-  {
-    return send(msg.data(), msg.size());
-  }
+inline int Communication::send(const std::vector<char> &msg) { return send(msg.data(), msg.size()); }
 
-  inline std::pair<OutBuffer, ErrBuffer>
-  Communication::communicate(const char* msg, size_t length, int timeout_ms)
-  {
+inline std::pair<OutBuffer, ErrBuffer> Communication::communicate(const char *msg, size_t length, int timeout_ms) {
     // With a timeout, always use the threaded approach so we can
     // limit the total time spent blocking on reads.
     if (timeout_ms >= 0) {
-      return communicate_threaded(msg, length, timeout_ms);
+        return communicate_threaded(msg, length, timeout_ms);
     }
 
     // Optimization from subprocess.py
     // If we are using one pipe, or no pipe
     // at all, using select() or threads is unnecessary.
-    auto hndls = {stream_->input(), stream_->output(), stream_->error()};
+    auto hndls = { stream_->input(), stream_->output(), stream_->error() };
     int count = std::count(std::begin(hndls), std::end(hndls), nullptr);
     const int len_conv = length;
 
     if (count >= 2) {
-      OutBuffer obuf;
-      ErrBuffer ebuf;
-      if (stream_->input()) {
-        if (msg) {
-          int wbytes = std::fwrite(msg, sizeof(char), length, stream_->input());
-          if (wbytes < len_conv) {
-            if (errno != EPIPE && errno != EINVAL) {
-              throw OSError("fwrite error", errno);
+        OutBuffer obuf;
+        ErrBuffer ebuf;
+        if (stream_->input()) {
+            if (msg) {
+                int wbytes = std::fwrite(msg, sizeof(char), length, stream_->input());
+                if (wbytes < len_conv) {
+                    if (errno != EPIPE && errno != EINVAL) {
+                        throw OSError("fwrite error", errno);
+                    }
+                }
             }
-          }
+            // Close the input stream
+            stream_->input_.reset();
+        } else if (stream_->output()) {
+            // Read till EOF
+            // ATTN: This could be blocking, if the process
+            // at the other end screws up, we get screwed as well
+            obuf.set_capacity(out_buf_cap_);
+
+            int rbytes = util::read_all(stream_->output(), obuf.buf);
+
+            if (rbytes == -1) {
+                throw OSError("read to obuf failed", errno);
+            }
+
+            obuf.length = rbytes;
+            // Close the output stream
+            stream_->output_.reset();
+
+        } else if (stream_->error()) {
+            // Same screwness applies here as well
+            ebuf.set_capacity(err_buf_cap_);
+
+            int rbytes = util::read_atmost_n(stream_->error(), ebuf.buf.data(), ebuf.buf.size());
+
+            if (rbytes == -1) {
+                throw OSError("read to ebuf failed", errno);
+            }
+
+            ebuf.length = rbytes;
+            // Close the error stream
+            stream_->error_.reset();
         }
-        // Close the input stream
-        stream_->input_.reset();
-      } else if (stream_->output()) {
-        // Read till EOF
-        // ATTN: This could be blocking, if the process
-        // at the other end screws up, we get screwed as well
-        obuf.set_capacity(out_buf_cap_);
-
-        int rbytes = util::read_all(
-                            stream_->output(),
-                            obuf.buf);
-
-        if (rbytes == -1) {
-          throw OSError("read to obuf failed", errno);
-        }
-
-        obuf.length = rbytes;
-        // Close the output stream
-        stream_->output_.reset();
-
-      } else if (stream_->error()) {
-        // Same screwness applies here as well
-        ebuf.set_capacity(err_buf_cap_);
-
-        int rbytes = util::read_atmost_n(
-                                  stream_->error(),
-                                  ebuf.buf.data(),
-                                  ebuf.buf.size());
-
-        if (rbytes == -1) {
-          throw OSError("read to ebuf failed", errno);
-        }
-
-        ebuf.length = rbytes;
-        // Close the error stream
-        stream_->error_.reset();
-      }
-      return std::make_pair(std::move(obuf), std::move(ebuf));
+        return std::make_pair(std::move(obuf), std::move(ebuf));
     }
 
     return communicate_threaded(msg, length);
-  }
+}
 
-
-  inline std::pair<OutBuffer, ErrBuffer>
-  Communication::communicate_threaded(const char* msg, size_t length, int timeout_ms)
-  {
+inline std::pair<OutBuffer, ErrBuffer> Communication::communicate_threaded(const char *msg, size_t length, int timeout_ms) {
     OutBuffer obuf;
     ErrBuffer ebuf;
     std::future<int> out_fut, err_fut;
     const int length_conv = length;
 
     if (stream_->output()) {
-      obuf.set_capacity(out_buf_cap_);
+        obuf.set_capacity(out_buf_cap_);
 
-      out_fut = std::async(std::launch::async,
-                          [&obuf, this] {
-                            return util::read_all(this->stream_->output(), obuf.buf);
-                          });
+        out_fut = std::async(std::launch::async, [&obuf, this] { return util::read_all(this->stream_->output(), obuf.buf); });
     }
     if (stream_->error()) {
-      ebuf.set_capacity(err_buf_cap_);
+        ebuf.set_capacity(err_buf_cap_);
 
-      err_fut = std::async(std::launch::async,
-                          [&ebuf, this] {
-                            return util::read_all(this->stream_->error(), ebuf.buf);
-                          });
+        err_fut = std::async(std::launch::async, [&ebuf, this] { return util::read_all(this->stream_->error(), ebuf.buf); });
     }
     if (stream_->input()) {
-      if (msg) {
-        int wbytes = std::fwrite(msg, sizeof(char), length, stream_->input());
-        if (wbytes < length_conv) {
-          if (errno != EPIPE && errno != EINVAL) {
-            throw OSError("fwrite error", errno);
-          }
+        if (msg) {
+            int wbytes = std::fwrite(msg, sizeof(char), length, stream_->input());
+            if (wbytes < length_conv) {
+                if (errno != EPIPE && errno != EINVAL) {
+                    throw OSError("fwrite error", errno);
+                }
+            }
         }
-      }
-      stream_->input_.reset();
+        stream_->input_.reset();
     }
 
     if (timeout_ms < 0) {
-      // No timeout: wait indefinitely for reads
-      if (out_fut.valid()) {
-        int res = out_fut.get();
-        if (res != -1) obuf.length = res;
-        else obuf.length = 0;
-      }
-      if (err_fut.valid()) {
-        int res = err_fut.get();
-        if (res != -1) ebuf.length = res;
-        else ebuf.length = 0;
-      }
-    } else {
-      // Timed wait: limit how long we block on reads
-      auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(timeout_ms);
-      bool timed_out = false;
-
-      if (out_fut.valid()) {
-        auto remaining = std::chrono::duration_cast<std::chrono::milliseconds>(
-            deadline - std::chrono::steady_clock::now());
-        if (remaining.count() <= 0) {
-          timed_out = true;
-        } else {
-          auto status = out_fut.wait_for(remaining);
-          if (status == std::future_status::timeout) {
-            timed_out = true;
-          } else {
+        // No timeout: wait indefinitely for reads
+        if (out_fut.valid()) {
             int res = out_fut.get();
-            obuf.length = (res != -1) ? res : 0;
-          }
+            if (res != -1)
+                obuf.length = res;
+            else
+                obuf.length = 0;
         }
-      }
-      if (err_fut.valid()) {
-        auto remaining = std::chrono::duration_cast<std::chrono::milliseconds>(
-            deadline - std::chrono::steady_clock::now());
-        if (remaining.count() <= 0) {
-          timed_out = true;
-        } else {
-          auto status = err_fut.wait_for(remaining);
-          if (status == std::future_status::timeout) {
-            timed_out = true;
-          } else {
+        if (err_fut.valid()) {
             int res = err_fut.get();
-            ebuf.length = (res != -1) ? res : 0;
-          }
+            if (res != -1)
+                ebuf.length = res;
+            else
+                ebuf.length = 0;
         }
-      }
+    } else {
+        // Timed wait: limit how long we block on reads
+        auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(timeout_ms);
+        bool timed_out = false;
 
-      if (timed_out) {
-        // Kill the child so the reader threads unblock (pipes get closed)
-        if (stream_->parent_) stream_->parent_->kill();
-        // Wait for both readers to complete so partial data is captured
-        if (out_fut.valid()) out_fut.wait();
-        if (err_fut.valid()) err_fut.wait();
-        throw TimeoutExpired("communicate() timed out", timeout_ms);
-      }
+        if (out_fut.valid()) {
+            auto remaining = std::chrono::duration_cast<std::chrono::milliseconds>(deadline - std::chrono::steady_clock::now());
+            if (remaining.count() <= 0) {
+                timed_out = true;
+            } else {
+                auto status = out_fut.wait_for(remaining);
+                if (status == std::future_status::timeout) {
+                    timed_out = true;
+                } else {
+                    int res = out_fut.get();
+                    obuf.length = (res != -1) ? res : 0;
+                }
+            }
+        }
+        if (err_fut.valid()) {
+            auto remaining = std::chrono::duration_cast<std::chrono::milliseconds>(deadline - std::chrono::steady_clock::now());
+            if (remaining.count() <= 0) {
+                timed_out = true;
+            } else {
+                auto status = err_fut.wait_for(remaining);
+                if (status == std::future_status::timeout) {
+                    timed_out = true;
+                } else {
+                    int res = err_fut.get();
+                    ebuf.length = (res != -1) ? res : 0;
+                }
+            }
+        }
+
+        if (timed_out) {
+            // Kill the child so the reader threads unblock (pipes get closed)
+            if (stream_->parent_)
+                stream_->parent_->kill();
+            // Wait for both readers to complete so partial data is captured
+            if (out_fut.valid())
+                out_fut.wait();
+            if (err_fut.valid())
+                err_fut.wait();
+            throw TimeoutExpired("communicate() timed out", timeout_ms);
+        }
     }
 
     return std::make_pair(std::move(obuf), std::move(ebuf));
-  }
+}
 
 } // end namespace detail
 
@@ -2539,146 +2447,114 @@ namespace detail {
  * The result of run(). Stores the exit code and any captured
  * stdout / stderr output.
  */
-struct CompletedProcess
-{
-  int retcode;
-  OutBuffer out;
-  ErrBuffer err;
+struct CompletedProcess {
+    int retcode;
+    OutBuffer out;
+    ErrBuffer err;
 
-  CompletedProcess(int rc, OutBuffer&& o, ErrBuffer&& e)
-    : retcode(rc), out(std::move(o)), err(std::move(e))
-  {}
+    CompletedProcess(int rc, OutBuffer &&o, ErrBuffer &&e) : retcode(rc), out(std::move(o)), err(std::move(e)) {}
 
-  void check_returncode() {
-    if (retcode) throw CalledProcessError("Command failed : Non zero retcode", retcode);
-  }
+    void check_returncode() {
+        if (retcode)
+            throw CalledProcessError("Command failed : Non zero retcode", retcode);
+    }
 };
-
 
 // Convenience Functions
 //
 //
-namespace detail
-{
-  template<typename F, typename... Args>
-  OutBuffer check_output_impl(F& farg, Args&&... args)
-  {
+namespace detail {
+template <typename F, typename... Args> OutBuffer check_output_impl(F &farg, Args &&...args) {
     static_assert(!detail::has_type<output, detail::param_pack<Args...>>::value, "output not allowed in args");
-    auto p = Popen(std::forward<F>(farg), std::forward<Args>(args)..., output{PIPE});
+    auto p = Popen(std::forward<F>(farg), std::forward<Args>(args)..., output{ PIPE });
     auto res = p.communicate();
     auto retcode = p.retcode();
     if (retcode != 0) {
-      throw CalledProcessError("Command failed : Non zero retcode", retcode);
+        throw CalledProcessError("Command failed : Non zero retcode", retcode);
     }
     return std::move(res.first);
-  }
+}
 
-  template<typename F, typename... Args>
-  int call_impl(F& farg, Args&&... args)
-  {
+template <typename F, typename... Args> int call_impl(F &farg, Args &&...args) {
     return Popen(std::forward<F>(farg), std::forward<Args>(args)...).wait();
-  }
+}
 
-  // ---- run() implementation ----
+// ---- run() implementation ----
 
-  template<typename F, typename... Args>
-  CompletedProcess run_impl(F&& farg, std::false_type /* has_capture */, Args&&... args)
-  {
+template <typename F, typename... Args> CompletedProcess run_impl(F &&farg, std::false_type /* has_capture */, Args &&...args) {
     Popen p(std::forward<F>(farg), std::forward<Args>(args)...);
     auto res = p.communicate(p.timeout_ms());
     if (p.check()) {
-      int rc = p.retcode();
-      if (rc) throw CalledProcessError("Command failed : Non zero retcode", rc);
+        int rc = p.retcode();
+        if (rc)
+            throw CalledProcessError("Command failed : Non zero retcode", rc);
     }
     return CompletedProcess(p.retcode(), std::move(res.first), std::move(res.second));
-  }
+}
 
-  template<typename F, typename... Args>
-  CompletedProcess run_impl(F&& farg, std::true_type /* has_capture */, Args&&... args)
-  {
-    Popen p(std::forward<F>(farg), std::forward<Args>(args)..., output{PIPE}, error{PIPE});
+template <typename F, typename... Args> CompletedProcess run_impl(F &&farg, std::true_type /* has_capture */, Args &&...args) {
+    Popen p(std::forward<F>(farg), std::forward<Args>(args)..., output{ PIPE }, error{ PIPE });
     auto res = p.communicate(p.timeout_ms());
     if (p.check()) {
-      int rc = p.retcode();
-      if (rc) throw CalledProcessError("Command failed : Non zero retcode", rc);
+        int rc = p.retcode();
+        if (rc)
+            throw CalledProcessError("Command failed : Non zero retcode", rc);
     }
     return CompletedProcess(p.retcode(), std::move(res.first), std::move(res.second));
-  }
+}
 
-  static inline void pipeline_impl(std::vector<Popen>& cmds)
-  {
-    /* EMPTY IMPL */
-  }
+static inline void pipeline_impl(std::vector<Popen> &cmds) { /* EMPTY IMPL */ }
 
-  template<typename... Args>
-  static inline void pipeline_impl(std::vector<Popen>& cmds,
-                                   const std::string& cmd,
-                                   Args&&... args)
-  {
+template <typename... Args> static inline void pipeline_impl(std::vector<Popen> &cmds, const std::string &cmd, Args &&...args) {
     if (cmds.size() == 0) {
-      cmds.emplace_back(cmd, output{PIPE}, defer_spawn{true});
+        cmds.emplace_back(cmd, output{ PIPE }, defer_spawn{ true });
     } else {
-      cmds.emplace_back(cmd, input{cmds.back().output()}, output{PIPE}, defer_spawn{true});
+        cmds.emplace_back(cmd, input{ cmds.back().output() }, output{ PIPE }, defer_spawn{ true });
     }
 
     pipeline_impl(cmds, std::forward<Args>(args)...);
-  }
-
 }
+
+} // namespace detail
 
 /*-----------------------------------------------------------
  *        CONVENIENCE FUNCTIONS
  *-----------------------------------------------------------
  */
 
-
 /*!
  * Run the command with arguments and wait for it to complete.
  * The parameters passed to the argument are exactly the same
  * one would use for Popen constructors.
  */
-template<typename... Args>
-int call(std::initializer_list<const char*> plist, Args&&... args)
-{
-  return (detail::call_impl(plist, std::forward<Args>(args)...));
+template <typename... Args> int call(std::initializer_list<const char *> plist, Args &&...args) {
+    return (detail::call_impl(plist, std::forward<Args>(args)...));
 }
 
-template<typename... Args>
-int call(const std::string& arg, Args&&... args)
-{
-  return (detail::call_impl(arg, std::forward<Args>(args)...));
+template <typename... Args> int call(const std::string &arg, Args &&...args) {
+    return (detail::call_impl(arg, std::forward<Args>(args)...));
 }
 
-template <typename... Args>
-int call(std::vector<std::string> plist, Args &&... args)
-{
-  return (detail::call_impl(plist, std::forward<Args>(args)...));
+template <typename... Args> int call(std::vector<std::string> plist, Args &&...args) {
+    return (detail::call_impl(plist, std::forward<Args>(args)...));
 }
-
 
 /*!
  * Run the command with arguments and wait for it to complete.
  * If the exit code was non-zero it raises a CalledProcessError.
  * The arguments are the same as for the Popen constructor.
  */
-template <typename... Args>
-OutBuffer check_output(std::initializer_list<const char*> plist, Args&&... args)
-{
-  return (detail::check_output_impl(plist, std::forward<Args>(args)...));
+template <typename... Args> OutBuffer check_output(std::initializer_list<const char *> plist, Args &&...args) {
+    return (detail::check_output_impl(plist, std::forward<Args>(args)...));
 }
 
-template <typename... Args>
-OutBuffer check_output(const std::string& arg, Args&&... args)
-{
-  return (detail::check_output_impl(arg, std::forward<Args>(args)...));
+template <typename... Args> OutBuffer check_output(const std::string &arg, Args &&...args) {
+    return (detail::check_output_impl(arg, std::forward<Args>(args)...));
 }
 
-template <typename... Args>
-OutBuffer check_output(std::vector<std::string> plist, Args &&... args)
-{
-  return (detail::check_output_impl(plist, std::forward<Args>(args)...));
+template <typename... Args> OutBuffer check_output(std::vector<std::string> plist, Args &&...args) {
+    return (detail::check_output_impl(plist, std::forward<Args>(args)...));
 }
-
 
 /*!
  * Run a command and return a CompletedProcess.
@@ -2689,48 +2565,29 @@ OutBuffer check_output(std::vector<std::string> plist, Args &&... args)
  *     run({"sleep", "30"}, check{true}, timeout_ms{5000});
  *     run({"cmd"}, capture_output{true}, check{true});
  */
-template<typename... Args>
-CompletedProcess run(std::initializer_list<const char*> plist, Args&&... args)
-{
-  typedef detail::param_pack<Args...> pack;
-  constexpr bool has_capture = detail::has_type<capture_output_arg, pack>::value;
-  static_assert(!has_capture || !detail::has_type<output, pack>::value,
-    "output argument not allowed with capture_output");
-  static_assert(!has_capture || !detail::has_type<error, pack>::value,
-    "error argument not allowed with capture_output");
-  return detail::run_impl(plist,
-    std::integral_constant<bool, has_capture>{},
-    std::forward<Args>(args)...);
+template <typename... Args> CompletedProcess run(std::initializer_list<const char *> plist, Args &&...args) {
+    typedef detail::param_pack<Args...> pack;
+    constexpr bool has_capture = detail::has_type<capture_output_arg, pack>::value;
+    static_assert(!has_capture || !detail::has_type<output, pack>::value, "output argument not allowed with capture_output");
+    static_assert(!has_capture || !detail::has_type<error, pack>::value, "error argument not allowed with capture_output");
+    return detail::run_impl(plist, std::integral_constant<bool, has_capture>{}, std::forward<Args>(args)...);
 }
 
-template<typename... Args>
-CompletedProcess run(const std::string& arg, Args&&... args)
-{
-  typedef detail::param_pack<Args...> pack;
-  constexpr bool has_capture = detail::has_type<capture_output_arg, pack>::value;
-  static_assert(!has_capture || !detail::has_type<output, pack>::value,
-    "output argument not allowed with capture_output");
-  static_assert(!has_capture || !detail::has_type<error, pack>::value,
-    "error argument not allowed with capture_output");
-  return detail::run_impl(arg,
-    std::integral_constant<bool, has_capture>{},
-    std::forward<Args>(args)...);
+template <typename... Args> CompletedProcess run(const std::string &arg, Args &&...args) {
+    typedef detail::param_pack<Args...> pack;
+    constexpr bool has_capture = detail::has_type<capture_output_arg, pack>::value;
+    static_assert(!has_capture || !detail::has_type<output, pack>::value, "output argument not allowed with capture_output");
+    static_assert(!has_capture || !detail::has_type<error, pack>::value, "error argument not allowed with capture_output");
+    return detail::run_impl(arg, std::integral_constant<bool, has_capture>{}, std::forward<Args>(args)...);
 }
 
-template <typename... Args>
-CompletedProcess run(std::vector<std::string> plist, Args &&... args)
-{
-  typedef detail::param_pack<Args...> pack;
-  constexpr bool has_capture = detail::has_type<capture_output_arg, pack>::value;
-  static_assert(!has_capture || !detail::has_type<output, pack>::value,
-    "output argument not allowed with capture_output");
-  static_assert(!has_capture || !detail::has_type<error, pack>::value,
-    "error argument not allowed with capture_output");
-  return detail::run_impl(plist,
-    std::integral_constant<bool, has_capture>{},
-    std::forward<Args>(args)...);
+template <typename... Args> CompletedProcess run(std::vector<std::string> plist, Args &&...args) {
+    typedef detail::param_pack<Args...> pack;
+    constexpr bool has_capture = detail::has_type<capture_output_arg, pack>::value;
+    static_assert(!has_capture || !detail::has_type<output, pack>::value, "output argument not allowed with capture_output");
+    static_assert(!has_capture || !detail::has_type<error, pack>::value, "error argument not allowed with capture_output");
+    return detail::run_impl(plist, std::integral_constant<bool, has_capture>{}, std::forward<Args>(args)...);
 }
-
 
 /*!
  * An easy way to pipeline easy commands.
@@ -2739,26 +2596,26 @@ CompletedProcess run(std::vector<std::string> plist, Args &&... args)
  * It would wait for the last command provided in the pipeline
  * to finish and then return the OutBuffer.
  */
-template<typename... Args>
+template <typename... Args>
 // Args expected to be flat commands using string instead of initializer_list
-OutBuffer pipeline(Args&&... args)
-{
-  std::vector<Popen> pcmds;
-  detail::pipeline_impl(pcmds, std::forward<Args>(args)...);
+OutBuffer pipeline(Args &&...args) {
+    std::vector<Popen> pcmds;
+    detail::pipeline_impl(pcmds, std::forward<Args>(args)...);
 
-  for (auto& p : pcmds) p.start_process();
-  return (pcmds.back().communicate().first);
+    for (auto &p : pcmds)
+        p.start_process();
+    return (pcmds.back().communicate().first);
 }
 
-}
+} // namespace subprocess
 
 #ifdef __USING_WINDOWS__
-  #ifndef _WINDEF_
-    #undef ZeroMemory
-    #undef MAKELANGID
-    #undef STATUS_WAIT_0
-    #undef WAIT_OBJECT_0
-  #endif
+#ifndef _WINDEF_
+#undef ZeroMemory
+#undef MAKELANGID
+#undef STATUS_WAIT_0
+#undef WAIT_OBJECT_0
+#endif
 #endif
 
 #endif // SUBPROCESS_HPP

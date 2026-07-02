@@ -1,27 +1,26 @@
 #include <cassert>
-#include <cstring>
 #include <cpp-subprocess/subprocess.hpp>
+#include <cstring>
 
 namespace sp = subprocess;
 
-void test_exception()
-{
-  bool caught = false;
-  try {
-    auto p = sp::Popen("invalid_command");
-    assert(false); // Expected to throw
-  } catch (sp::CalledProcessError& e) {
+void test_exception() {
+    bool caught = false;
+    try {
+        auto p = sp::Popen("invalid_command");
+        assert(false); // Expected to throw
+    } catch (sp::CalledProcessError &e) {
 #ifdef __USING_WINDOWS__
-    assert(std::strstr(e.what(), "CreateProcess failed: The system cannot find the file specified."));
+        assert(std::strstr(e.what(), "CreateProcess failed: The system cannot find the file specified."));
 #else
-    assert(std::strstr(e.what(), "execvpe failed: 0x"));
+        assert(std::strstr(e.what(), "execvpe failed: 0x"));
 #endif
-    caught = true;
-  }
-  assert(caught);
+        caught = true;
+    }
+    assert(caught);
 }
 
 int main() {
-  test_exception();
-  return 0;
+    test_exception();
+    return 0;
 }
